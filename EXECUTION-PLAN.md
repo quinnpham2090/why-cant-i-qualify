@@ -177,3 +177,36 @@ SMS/Twilio · AI explanation layer · scenario simulator beyond 3 what-ifs · mu
 3. You: say "go" (and pick autonomous vs step-by-step from the earlier options) — I then execute Phase 1.
 
 **Reminder:** this plan is not legal advice; the attorney gate in Phase 6 is the launch condition.
+
+---
+
+## 13. V1.5 → V1.6 fix pass — status log (FIX_PLAN_FINAL_REVIEW.md)
+
+Applied 2026-08-28. Source review: `FIX_PLAN_FINAL_REVIEW.md` (20-item priority matrix).
+
+| Item | Status | Notes |
+|---|---|---|
+| P1 income-feedback gap | ✅ Applied | `qualifyingIncome = max(incomeRes.monthly, best non-QM estimate)` feeds DTI; DSCR/asset-qualifier override debt+payment sub-scores on coverage bands; disclosed via `qualifying_income_non_qm` / `dscr_coverage` assumptions. NQM3 diagnostic: qualifyingIncome $5,952/mo, DTI 34.1%. |
+| P2 caps + rate limit | ✅ Applied | `src/lib/rate-limit.ts` (5/min/IP, pruned Map) + field caps (name 120/email 254/phone 20/zip 10), 32KB body cap → 413, ZIP format check, `Retry-After` on 429. Verified live: 6th POST → 429, 49k name → 413. |
+| P3 credit-event question | ✅ Applied | Wizard step 3 asks event type + years-since (0–10, 0.5 steps); NQM5 fixture added (16 tests total, all passing). |
+| P4 placeholder floors | ✅ Applied (with residual) | Live retrieval 2026-08-28: Angel Oak P&L (640 w/stmts → 80% LTV; P&L-only 720), NewFi CPA P&L (80% LTV), Acra (660/80%), Angel Oak non-warrantable condo (90%/85% LTV tiers, 640 inherited). `verify:true` count 2 → 0; `RESEARCH_NON_QM.md §4` updated. Residual: reserves/rate add-ons/asset divisor remain broker-portal-only (QuickQuote/BLU) — still conservative, still disclosed. |
+| P5 official EHL mark | ✅ Applied | `EHLMark.tsx` now draws the official EHO geometry (square border + trapezoid roof + equal-sign slabs) in the footer, neutral color, text fallback kept. hud.gov/Wikimedia asset fetches are blocked from this environment; attorney to swap in the exact HUD binary at the P5 review if desired. |
+| P6 legal SEO + sitemap/robots | ✅ Applied | Unique descriptions on 4 legal pages; `sitemap.ts` (4 URLs), `robots.ts` (disallow `/api/`, sitemap ref), `metadataBase` set. Verified live via curl. |
+| P7 non-QM pricing footnote | ✅ Applied | Range table shows the 0.75–1.75 pt note whenever a non-QM program is eligible; QM-only results unaffected. |
+| P8 Turnstile | ⏳ Operator | Code path verified (missing token → 422 with secret set, live-tested). **Domain purchase deferred by operator pending compliance-team review**; rate limit + caps cover the gap meanwhile. |
+| P9 Vercel deploy | ⏳ Operator | Dashboard action per plan §9. `NEXT_PUBLIC_SITE_URL` added to `.env.example` for cutover. |
+| P10 questionnaire wizard | ✅ Applied | 4 steps with Next/Back, per-step validation, sticky progress, `aria-current="step"`, `aria-live` announcements, `aria-invalid` + per-field errors, maxLengths. **Funnel events added** (`/api/event` → `funnel_events`): start / step_complete / complete / results_viewed / capture_start / capture_success / book_click — no PII, no financial figures; run `supabase/schema.sql` funnel_events section to activate storage (route 204s gracefully until then). |
+| P11 sanitize name | ✅ Applied | Route slices to 60 then escapes (`escapeHtml` exported from email.ts); subject truncates again at 60. |
+| P12 lowercase + List-Unsubscribe | ✅ Applied | Email trimmed+lowercased before insert/send; `List-Unsubscribe` header on both Resend sends. |
+| P13 co-borrower | ✅ Applied | Engine now actually weights it: income summed into qualifying income; credit = lower-of-two after haircut (disclosed). Questionnaire asks income + tier. |
+| P14 pillar icons | ✅ Applied | 7 distinct pillar icons (briefcase/scale/gauge/wallet/house-calendar/home/document-check) + dedicated rising-steps strength icon replacing the reused checkmark. |
+| P15 hero illustration | ✅ Applied | Inline `HeroIllustration.tsx` (contemplative figure by window, warm palette) — no third-party asset/license; subject-neutral for FH Act review. |
+| P16 OG image + favicon | ✅ Applied | `opengraph-image.tsx` (1200×630, warm palette, NMLS) + `icon.svg` EHO tile. OG tags verified live. |
+| P17 dark mode | ⏸ Deferred | Per plan §17. |
+| P18 testimonials | ⏸ Deferred | Per plan §18 (FTC Part 255 attorney gate). |
+| P19 remaining engine fields | ✅ Applied | HOA fee, flood zone, documented gift funds (+ amount), first-time-buyer — all wired to engine paths that already consumed them; each disclosed when it changes the estimate. `selfEmployedNetIncome2yrAvg` remains an engine-only input (no UI question; the income-documentation question covers the intent). |
+| P20 refresh cadence | ✅ Applied | `npm run copy-lint` now fails when any `NON_QM_PROGRAMS.lastVerified` is >90 days old; currently 7/7 fresh. Calendar reminder is an operator task. |
+
+**Gate status:** tsc 0 · eslint 0 · copy-lint OK (40 files) + non-qm-refresh OK · vitest 16/16 · `next build` clean · API smoke-tested (413/429/422/ZIP paths) · sitemap/robots/OG verified by curl. Smoke-test lead rows deleted from Supabase.
+
+**Still required before public launch:** attorney sign-off (Phase 6), P4 broker-portal fields (reserves/rate) or a documented decision to keep them as disclosed planning values, Turnstile keys (deferred with domain pending compliance-team review), Vercel deploy, run the `funnel_events` section of `supabase/schema.sql`.

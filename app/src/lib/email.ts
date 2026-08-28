@@ -16,7 +16,15 @@ function resend(): Resend | null {
 }
 
 const FROM = process.env.EMAIL_FROM || "Why Can't I Qualify <onboarding@resend.dev>";
+
+/** Where the MLO receives lead notifications. */
 const TO_MLO = process.env.EMAIL_TO || "";
+
+/**
+ * List-Unsubscribe header (FIX_PLAN V1.6 P12): one-click opt-out signal for
+ * mailbox providers; the mailto target is the operator's monitored inbox.
+ */
+const LIST_UNSUBSCRIBE = "<mailto:hello@notify.qurealtysol.com>";
 
 export interface LeadEmailData {
   name: string;
@@ -56,6 +64,7 @@ export async function sendConsumerConfirmation(data: LeadEmailData) {
       to: data.email,
       subject: "Your mortgage readiness check — next steps",
       html,
+      headers: { "List-Unsubscribe": LIST_UNSUBSCRIBE },
     });
     return error ? { sent: false, error: error.message } : { sent: true };
   } catch (e) {
@@ -84,8 +93,11 @@ export async function sendMloNotification(data: LeadEmailData, consentText: stri
     const { error } = await client.emails.send({
       from: FROM,
       to: TO_MLO,
-      subject: `New lead: ${data.name}`,
+      // The name arrives pre-escaped and pre-truncated from the API route
+      // (P11 defense-in-depth — never reflect raw input in a header/subject).
+      subject: `New lead: ${data.name.slice(0, 60)}`,
       html,
+      headers: { "List-Unsubscribe": LIST_UNSUBSCRIBE },
     });
     return error ? { sent: false, error: error.message } : { sent: true };
   } catch (e) {
@@ -93,7 +105,8 @@ export async function sendMloNotification(data: LeadEmailData, consentText: stri
   }
 }
 
-function escapeHtml(s: string): string {
+/** Escape for safe interpolation into HTML bodies/subjects. Exported for the lead route (P11). */
+export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

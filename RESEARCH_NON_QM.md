@@ -108,11 +108,32 @@ W-2 paystubs · W-2 + offer letter (day-one, Rocket) · 2-yr full tax returns ·
 
 ## 4. Gaps that require LIVE verification before production (Phase A continuation)
 
-1. P&L-only min FICO / max LTV / reserve requirement — no numbers in corpus.
-2. Asset-depletion divisor (84 vs 120 vs 144 months) — no number in corpus.
-3. Non-warrantable condo min FICO / max LTV — no numbers in corpus.
-4. Current-year rate add-ons per program (corpus is qualitative: "non-QM rates are higher").
-5. DSCR minimums across lenders other than Angel Oak.
+> **UPDATE 2026-08-28 (FIX_PLAN V1.6 P4 — live verification pass):** A live
+> retrieval pass was run against public wholesale program pages. Results:
+>
+> | Placeholder | Resolution | Sources (accessed 2026-08-28) |
+> |---|---|---|
+> | P&L-only min FICO / max LTV | **RESOLVED — published.** Angel Oak: min FICO 640 (P&L with 2 mo business bank statements, up to 75% LTV); P&L-only (no bank statements) min 720 mid score; up to 80% max LTV at 680+. NewFi CPA P&L: up to 80% LTV (Sequoia floor 620, corroborated on parent program page). Acra: min 660 FICO, max 80% LTV purchase. `tables-non-qm.ts` uses the conservative 640 floor + 80% LTV. | angeloakms.com/programs/pl-loan/ · newfiwholesale.com/programs/cpa-prepared-pl/ · newfiwholesale.com/programs/non-qm/ · acralending.com/pandl |
+> | Asset-depletion divisor (84 vs 120 vs 144) | **Still NOT publicly published** — engine keeps the conservative 84-month planning value, disclosed via `assumptionsUsed[]`. Broker-matrix item. | — |
+> | Non-warrantable condo min FICO / max LTV | **PARTIALLY RESOLVED — published by Angel Oak.** Bank Statement/Full Doc covers warrantable AND non-warrantable condos up to 90% LTV (min FICO 640 inherited from that program's matrix); DSCR for non-warrantable/condotel up to 85% LTV. NewFi: no public non-warrantable grid (Sequoia/DSCR matrices are PDF-only). Lima One: no retail non-warrantable condo/condotel product at all (investor rental lender only; limaone.com/condotel/ is a 404). `tables-non-qm.ts` keeps a conservative 75% LTV across lenders. | angeloakms.com/angel-oak-non-qm-condominium-loans/ · angeloakms.com/programs/bank-statement-mortgage-program/ |
+> | Current-year rate add-ons per program | **NOT publicly published** — all three lenders price via login portals (Angel Oak QuickQuote, NewFi BLU Quick Pricer, Acra pricer). Engine `rateAddOnPct` values remain conservative planning estimates and are disclosed as assumptions. Broker-AE retrieval still required before rate-dependent marketing. | — |
+> | DSCR minimums across other lenders | Angel Oak min DSCR 1.0 confirmed (corpus); NewFi DSCR page publishes "Credit Scores as Low as 640" and "Up to 80% LTV" (newfiwholesale.com/programs/dscr/). | newfiwholesale.com/programs/dscr/ |
+> | **Portfolio Select (post-event program)** | **CONFIRMED — published verbatim.** Angel Oak Portfolio Select: min FICO 640 (up to 75% LTV; 85% LTV at 700+), up to 50% DTI, **1-year seasoning for foreclosure/short sale/deed-in-lieu, 2-year bankruptcy (Ch. 13 may use filing date)**, loans to $2.5M. This is the natural target program for the NQM5 fixture profile (640 FICO, ~1-yr post-foreclosure). | angeloakms.com/programs/portfolio-select-mortgage-program/ |
+>
+> Remaining broker-portal-only fields (reserves, rate add-ons, asset divisor)
+> must be sourced from a lender account executive or the broker PDF matrices
+> before any rate-dependent marketing claim. `verify: true` count in
+> `tables-non-qm.ts` is now **0**; all rows carry `lastVerified` stamps.
+>
+> **Attorney question still open:** whether E Mortgage Capital (the operator's
+> broker) originates non-QM directly or refers it — flagged in
+> `RESEARCH_AND_FIX_PLAN.md §8.4`.
+
+1. ~~P&L-only min FICO / max LTV / reserve requirement — no numbers in corpus.~~ (FICO/LTV resolved 2026-08-28; reserves remain broker-portal-only)
+2. Asset-depletion divisor (84 vs 120 vs 144 months) — no number in corpus. (Still open — broker matrix)
+3. ~~Non-warrantable condo min FICO / max LTV — no numbers in corpus.~~ (Resolved via Angel Oak 2026-08-28; NewFi/Lima One have no public grid)
+4. Current-year rate add-ons per program (corpus is qualitative: "non-QM rates are higher"). (Still open — QuickQuote/BLU login required)
+5. DSCR minimums across lenders other than Angel Oak. (NewFi 640/80% noted above)
 6. Whether E Mortgage Capital (the operator's broker) has non-QM lending authority or whether these are referral-only — **attorney question**, flagged in `RESEARCH_AND_FIX_PLAN.md §8.4`.
 
 ## 5. Compliance guardrails applied (from SAFE_LANGUAGE + MASTER reports)

@@ -241,6 +241,10 @@ describe("non-QM fixtures (Phase C)", () => {
     expect(r.disclaimers.some((d) => d.includes("non-QM"))).toBe(true);
     // Bank-statement income assumption disclosed
     expect(r.assumptionsUsed.some((a) => a.key === "bank_statement_income")).toBe(true);
+    // P1: bank-statement qualifying income (9000*0.75=6750) beats the
+    // self-employed haircut (9000*0.7=6300) and feeds the result
+    expect(r.qualifyingIncome).toBeGreaterThan(6300);
+    expect(r.assumptionsUsed.some((a) => a.key === "qualifying_income_non_qm")).toBe(true);
   });
 
   it("NQM2: investor with DSCR-covering rent -> DSCR surfaced, not limited_fit", () => {
@@ -283,6 +287,16 @@ describe("non-QM fixtures (Phase C)", () => {
     expect(r.eligiblePrograms).toContain(LoanType.ASSET_QUALIFIER);
     expect(r.assumptionsUsed.some((a) => a.key === "asset_depletion_income")).toBe(true);
     expect(r.disclaimers.some((d) => d.includes("non-QM"))).toBe(true);
+    // P1: asset-depletion income must feed qualifying income (500k/84 ≈ 5,952/mo)
+    expect(r.qualifyingIncome).toBeGreaterThan(5000);
+    // P1: asset-depletion income must feed DTI — a sane ratio, not 0 or >100%.
+    expect(r.dtiBackEnd).toBeGreaterThan(0.10);
+    expect(r.dtiBackEnd).toBeLessThan(0.50);
+    // P1: the income merge is disclosed as an assumption
+    expect(r.assumptionsUsed.some((a) => a.key === "qualifying_income_non_qm")).toBe(true);
+    // P1: no-ratio asset program scores debt/payment on coverage, not DTI
+    expect(r.assumptionsUsed.some((a) => a.key === "dscr_coverage")).toBe(true);
+    expect(r.subScores.debt.summary).not.toContain("DTI");
   });
 
   it("NQM4: cash-undocumented income -> surfaced with disclosure, not hidden", () => {
@@ -303,6 +317,57 @@ describe("non-QM fixtures (Phase C)", () => {
     );
     expect(r.assumptionsUsed.some((a) => a.key === "cash_income_estimate")).toBe(true);
     expect(r.compositeTier).not.toBe(CompositeTier.LIMITED_FIT);
+  });
+
+  it("NQM5: 640 FICO, 1-yr post-foreclosure -> Portfolio Select path, not same as clean 640", () => {
+    // 640 FICO with a foreclosure ~0.8 years ago. P3: the credit-event question
+    // must change the outcome — seasoning blocks agency programs, and the
+    // obstacle system surfaces the remaining wait (Portfolio Select territory:
+    // 1-yr FC seasoning, min FICO 640 per Angel Oak, corpus L68).
+    const postFc = runDiagnostic(
+      base({
+        grossMonthlyIncome: 7000,
+        incomeType: IncomeType.W2,
+        incomeDocumentation: IncomeDocumentation.W2_STUBS,
+        creditScoreSelfReported: 660, // -> 640 haircut
+        totalMonthlyDebtPayments: 500,
+        downPaymentAvailable: 75000, // 25% of 300k
+        targetPurchasePrice: 300000,
+        propertyType: PropertyType.SFR,
+        creditEvent: CreditEvent.FORECLOSURE,
+        yearsSinceCreditEvent: 0.8, // ~10 months post-foreclosure
+        employmentYearsInField: 3,
+        liquidAssetsAfterClose: 20000,
+      }),
+    );
+    // A clean 640 with identical finances clears waiting periods.
+    const clean = runDiagnostic(
+      base({
+        grossMonthlyIncome: 7000,
+        incomeType: IncomeType.W2,
+        incomeDocumentation: IncomeDocumentation.W2_STUBS,
+        creditScoreSelfReported: 660, // -> 640 haircut
+        totalMonthlyDebtPayments: 500,
+        downPaymentAvailable: 75000,
+        targetPurchasePrice: 300000,
+        propertyType: PropertyType.SFR,
+        creditEvent: CreditEvent.NONE,
+        employmentYearsInField: 3,
+        liquidAssetsAfterClose: 20000,
+      }),
+    );
+    // The recent foreclosure must score credit worse than the identical clean profile
+    expect(postFc.subScores.credit.score).toBeLessThan(clean.subScores.credit.score);
+    expect(postFc.compositeScore).toBeLessThan(clean.compositeScore);
+    // The seasoning wait is surfaced as an obstacle with the remaining time
+    expect(postFc.primaryObstacle?.category ?? postFc.secondaryObstacles[0]?.category).toBe("credit");
+    const obstacleText = [postFc.primaryObstacle, ...postFc.secondaryObstacles]
+      .filter(Boolean)
+      .map((o) => o?.description ?? "")
+      .join(" ");
+    expect(obstacleText).toContain("waiting period");
+    // Clean profile has no credit-event obstacle
+    expect(clean.subScores.credit.redFlags.length).toBe(0);
   });
 });
 

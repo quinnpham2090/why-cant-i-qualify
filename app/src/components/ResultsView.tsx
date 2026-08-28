@@ -76,6 +76,108 @@ function TierIcon({ tier, className = "h-4 w-4" }: { tier: string; className?: s
   );
 }
 
+/**
+ * Distinct line icon per readiness pillar (FIX_PLAN V1.6 P14): briefcase
+ * (income), scale (debt), gauge (credit), wallet (cash), house-calendar
+ * (payment), home (property), document-check (documentation). 1.8px stroke,
+ * warm-700, free inline SVG — no icon dependency added.
+ */
+function PillarIcon({ pillar, className = "h-4.5 w-4.5" }: { pillar: string; className?: string }) {
+  const paths: Record<string, React.ReactNode> = {
+    // briefcase — income
+    income: (
+      <>
+        <rect x="3.5" y="8" width="17" height="12" rx="2" />
+        <path d="M9 8V6.5A2.5 2.5 0 0 1 11.5 4h1A2.5 2.5 0 0 1 15 6.5V8" />
+        <path d="M3.5 13h17" />
+      </>
+    ),
+    // scale — debt
+    debt: (
+      <>
+        <path d="M12 4v16" />
+        <path d="M5 7h14" />
+        <path d="M5 7l-2.5 5.5a3 3 0 0 0 5 0L5 7z" />
+        <path d="M19 7l-2.5 5.5a3 3 0 0 0 5 0L19 7z" />
+        <path d="M8.5 20h7" />
+      </>
+    ),
+    // gauge — credit
+    credit: (
+      <>
+        <path d="M4.5 17.5a8.5 8.5 0 1 1 15 0" />
+        <path d="M12 14.5 16 9.5" />
+        <circle cx="12" cy="15" r="1.4" />
+      </>
+    ),
+    // wallet — cash
+    cash: (
+      <>
+        <rect x="3.5" y="7" width="17" height="12" rx="2" />
+        <path d="M16 7V5.5A1.5 1.5 0 0 0 14.5 4H5.5" />
+        <circle cx="16.2" cy="13" r="1.2" />
+      </>
+    ),
+    // house-calendar — payment
+    payment: (
+      <>
+        <path d="M4 10.5 12 4l8 6.5" />
+        <path d="M6 9.5V20h12V9.5" />
+        <path d="M9 13.5h6M9 16.5h6" />
+      </>
+    ),
+    // home — property
+    property: (
+      <>
+        <path d="M4 11 12 4l8 7" />
+        <path d="M6 9.5V20h12V9.5" />
+        <path d="M10 20v-5.5h4V20" />
+      </>
+    ),
+    // document-check — documentation
+    documentation: (
+      <>
+        <path d="M7 3.5h7L18.5 8v12.5h-11.5z" />
+        <path d="M13.5 3.5V8.5h5" />
+        <path d="M9.5 14.5l2 2 3.5-4" />
+      </>
+    ),
+  };
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      {paths[pillar] ?? paths.documentation}
+    </svg>
+  );
+}
+
+/** Strength marker — a rising-steps icon, distinct from the tier checkmark (P14). */
+function StrengthIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M4 20h4v-4h4v-4h4V8h4" />
+      <path d="M16.5 4H20v3.5" />
+    </svg>
+  );
+}
+
 /** Non-QM labels (friendly) — mirrors engine/tables-non-qm.ts. */
 const NON_QM_LABELS: Partial<Record<LoanType, string>> = {
   [LoanType.BANK_STATEMENT]: "Bank statement (12/24-month deposits)",
@@ -103,6 +205,9 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
   const pillClass = TIER_BADGE[result.compositeTier] ?? "bg-sand-100 text-warm-900";
   const qmPrograms = result.eligiblePrograms.filter((p) => !NON_QM_SET.has(p));
   const nonQmPrograms = result.eligiblePrograms.filter((p) => NON_QM_SET.has(p));
+  // P7: surface the non-QM pricing note beside the numbers when an investor /
+  // alternative-documentation program is in the eligible set.
+  const showNonQmRateNote = nonQmPrograms.length > 0;
 
   return (
     <section aria-labelledby="results-heading" className="space-y-8">
@@ -129,7 +234,7 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
       {/* 2. Your next step — obstacle + concrete action first (agency before detail) */}
       {(result.primaryObstacle || result.strengths.length > 0) && (
         <div className="rounded-2xl border border-sand-200 bg-sand-50 p-6">
-          <h3 className="text-base font-semibold text-warm-900">Where we&rsquo;d start</h3>
+          <h3 className="text-base font-semibold text-warm-900">Where we would start</h3>
           {result.primaryObstacle ? (
             <div className="mt-3 rounded-xl border border-sand-200 bg-white p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-warm-500">
@@ -162,11 +267,11 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
       {/* 3. Strengths — what's already working, surfaced early */}
       {result.strengths.length > 0 && (
         <div className="rounded-2xl border border-sage-100 bg-sage-50 p-6">
-          <h3 className="text-base font-semibold text-warm-900">What&rsquo;s already working for you</h3>
+          <h3 className="text-base font-semibold text-warm-900">What is already working for you</h3>
           <ul className="mt-3 space-y-2">
             {result.strengths.map((s) => (
               <li key={`${s.category}-${s.description}`} className="flex items-start gap-2 rounded-lg bg-white p-3 text-sm text-warm-900">
-                <span className="mt-0.5 text-sage-600"><TierIcon tier="strong_fit" className="h-4 w-4" /></span>
+                <span className="mt-0.5 text-sage-600"><StrengthIcon className="h-4 w-4" /></span>
                 {s.description}
               </li>
             ))}
@@ -237,6 +342,14 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
             mid={result.cashToClose.mid}
           />
         </dl>
+        {showNonQmRateNote && (
+          <p className="mt-2 text-xs font-medium text-warm-700">
+            Investor and alternative-documentation program rates typically price
+            0.75–1.75 points above comparable conventional loans — and for the
+            investor cash-flow program, the rent the property produces, not
+            your personal income, drives that program.
+          </p>
+        )}
         <p className="mt-3 text-xs text-warm-500">
           Payment estimates exclude taxes and insurance where noted and may be greater.
           Actual terms depend on your full financial picture and the lender.
@@ -255,7 +368,12 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
             return (
               <li key={key} className="rounded-xl bg-sand-50 p-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium capitalize text-warm-900">{key}</span>
+                  <span className="flex items-center gap-2 text-sm font-medium capitalize text-warm-900">
+                    <span className="text-warm-700">
+                      <PillarIcon pillar={key} />
+                    </span>
+                    {key}
+                  </span>
                   <span className="text-sm font-semibold text-warm-900">{s.score}/100</span>
                 </div>
                 <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-sand-200">

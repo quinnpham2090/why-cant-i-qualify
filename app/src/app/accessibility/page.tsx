@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { LegalShell } from "@/components/LegalShell";
 
-export const metadata: Metadata = { title: "Accessibility Statement" };
+export const metadata: Metadata = {
+  title: "Accessibility Statement",
+  description:
+    "Our commitment to WCAG 2.1 Level AA: keyboard navigation, color contrast, labeled forms, and how to report an accessibility barrier.",
+};
 
 export default function AccessibilityPage() {
   return (

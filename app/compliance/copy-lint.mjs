@@ -155,3 +155,37 @@ if (violations > 0) {
 } else {
   console.log(`copy-lint: OK — scanned ${files.length} file(s), no prohibited claims.`);
 }
+
+// ---------------------------------------------------------------------------
+// P20 (FIX_PLAN V1.6): quarterly non-QM refresh cadence — fail CI when any
+// NON_QM_PROGRAMS entry has a lastVerified stamp older than 90 days.
+// ---------------------------------------------------------------------------
+const nonQmPath = join(ROOT, "src", "engine", "tables-non-qm.ts");
+const STALE_DAYS = 90;
+
+try {
+  const src = readFileSync(nonQmPath, "utf8");
+  const today = new Date();
+  const stamps = [...src.matchAll(/lastVerified:\s*"(\d{4}-\d{2}-\d{2})"/g)].map((m) => m[1]);
+  if (stamps.length === 0) {
+    console.error(`non-qm-refresh: no lastVerified stamps found in ${relative(ROOT, nonQmPath)}`);
+    process.exit(1);
+  }
+  const stale = stamps.filter((s) => {
+    const ageDays = (today - new Date(s)) / 86_400_000;
+    return ageDays > STALE_DAYS;
+  });
+  if (stale.length > 0) {
+    console.error(
+      `\nnon-qm-refresh: ${stale.length} of ${stamps.length} NON_QM_PROGRAMS entries are older than ${STALE_DAYS} days (${[...new Set(stale)].join(", ")}).`,
+    );
+    console.error("Re-verify the program sheets, update lastVerified, and cite sources (RESEARCH_NON_QM.md §4).");
+    process.exit(1);
+  }
+  console.log(
+    `non-qm-refresh: OK — ${stamps.length} entries verified within the last ${STALE_DAYS} days (oldest ${stamps.sort()[0]}).`,
+  );
+} catch (err) {
+  console.error(`non-qm-refresh: could not check ${relative(ROOT, nonQmPath)}: ${err.message}`);
+  process.exit(1);
+}

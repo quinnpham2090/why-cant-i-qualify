@@ -1,6 +1,6 @@
 /**
  * User-facing display labels. These are COPY and are subject to the
- * forbidden-word lint. Keep them neutral — no "approved"/"denied"/"guaranteed".
+ * forbidden-word lint. Keep them neutral — no approval/denial/guarantee wording.
  */
 
 import { CompositeTier, type Confidence } from "./types";

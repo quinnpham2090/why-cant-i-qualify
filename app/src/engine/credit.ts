@@ -69,9 +69,25 @@ export function buildCreditProfile(i: EngineInputs): CreditResult {
     yearsRemaining = Math.max(0, (required - elapsedMonths) / 12);
   }
 
+  // Co-borrower credit (FIX_PLAN V1.6 P13): joint applications are typically
+  // priced on the lower of the two scores. Apply the same self-reported
+  // haircut for consistency and disclose when the co-borrower score governs.
+  let effectiveFico = fico;
+  if (i.coBorrowerCredit != null && i.coBorrowerCredit > 0) {
+    const coFico = Math.max(300, i.coBorrowerCredit - SELF_REPORTED_FICO_HAIRCUT);
+    if (coFico < effectiveFico) {
+      effectiveFico = coFico;
+      assumptions.push({
+        key: "co_borrower_credit",
+        description:
+          "Joint applications are usually priced on the lower of the two credit scores, so the planning estimate uses the lower score after the same conservative adjustment.",
+      });
+    }
+  }
+
   return {
     profile: {
-      fico,
+      fico: effectiveFico,
       waitingClear,
       yearsRemaining,
       had60DayLate24mo: i.had60DayLate24mo ?? false,

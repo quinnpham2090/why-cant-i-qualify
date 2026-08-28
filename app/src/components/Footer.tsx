@@ -1,25 +1,6 @@
 import Link from "next/link";
 import { DISCLOSURES, FOOTER_DISCLOSURE_LINES } from "@/config/disclosures";
-
-/** Inline Equal Housing Lender mark (accessible text alternative provided). */
-function EHLMark() {
-  return (
-    <svg
-      aria-hidden="true"
-      width="26"
-      height="26"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      className="shrink-0"
-    >
-      <path d="M3 10.5 12 3l9 7.5" />
-      <path d="M5 9.5V21h14V9.5" />
-      <path d="M9.5 13.5h5M9.5 16.5h5" />
-    </svg>
-  );
-}
+import { EHLMark } from "@/components/EHLMark";
 
 export function Footer() {
   return (
@@ -41,9 +22,9 @@ export function Footer() {
           </Link>
         </nav>
 
-        {/* Equal Housing + disclosures */}
-        <div className="flex items-start gap-3">
-          <EHLMark />
+        {/* Equal Housing + disclosures — official EHO mark (FIX_PLAN P5) */}
+        <div className="flex items-start gap-3 text-neutral-800">
+          <EHLMark className="mt-0.5 h-[30px] w-[30px] shrink-0 text-neutral-900" />
           <div>
             <p className="font-semibold text-neutral-900">Equal Housing Lender</p>
             <p className="mt-1 text-xs leading-relaxed">

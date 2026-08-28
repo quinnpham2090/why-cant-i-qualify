@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { TCPA_CONSENT_TEXT, LEAD_TRANSFER_TEXT } from "@/config/disclosures";
+import { trackEvent } from "@/lib/funnel";
 
 declare global {
   interface Window {
@@ -30,6 +31,11 @@ export function LeadCaptureForm({ context }: { context?: LeadContext }) {
   const turnstileRef = useRef<HTMLDivElement>(null);
 
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
+  // Funnel (P10): a capture form was rendered with the results
+  useEffect(() => {
+    trackEvent({ event: "lead_capture_start" });
+  }, []);
 
   // Load + render Turnstile when a site key is configured.
   useEffect(() => {
@@ -82,6 +88,7 @@ export function LeadCaptureForm({ context }: { context?: LeadContext }) {
         setStatus("error");
         return;
       }
+      trackEvent({ event: "lead_capture_success", meta: { tier: context?.compositeTier ?? null } });
       setStatus("success");
     } catch {
       setError("Network error. Please try again.");
@@ -99,6 +106,7 @@ export function LeadCaptureForm({ context }: { context?: LeadContext }) {
         </p>
         <a
           href="/book"
+          onClick={() => trackEvent({ event: "book_click" })}
           className="mt-5 inline-block rounded-full bg-emerald-700 px-7 py-3 font-semibold text-white hover:bg-emerald-800"
         >
           Book my free review
@@ -120,19 +128,19 @@ export function LeadCaptureForm({ context }: { context?: LeadContext }) {
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <div>
           <label className={labelCls} htmlFor="lc-name">Full name</label>
-          <input id="lc-name" name="name" required className={inputCls} autoComplete="name" />
+          <input id="lc-name" name="name" required maxLength={120} className={inputCls} autoComplete="name" />
         </div>
         <div>
           <label className={labelCls} htmlFor="lc-email">Email</label>
-          <input id="lc-email" name="email" type="email" required className={inputCls} autoComplete="email" />
+          <input id="lc-email" name="email" type="email" required maxLength={254} className={inputCls} autoComplete="email" />
         </div>
         <div>
           <label className={labelCls} htmlFor="lc-phone">Phone (optional)</label>
-          <input id="lc-phone" name="phone" type="tel" className={inputCls} autoComplete="tel" />
+          <input id="lc-phone" name="phone" type="tel" maxLength={20} className={inputCls} autoComplete="tel" />
         </div>
         <div>
           <label className={labelCls} htmlFor="lc-zip">ZIP code (optional)</label>
-          <input id="lc-zip" name="zip" inputMode="numeric" className={inputCls} autoComplete="postal-code" />
+          <input id="lc-zip" name="zip" inputMode="numeric" maxLength={10} className={inputCls} autoComplete="postal-code" />
         </div>
         <div className="sm:col-span-2">
           <label className={labelCls} htmlFor="lc-time">Best time to reach you (optional)</label>

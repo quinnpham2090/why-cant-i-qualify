@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { LegalShell } from "@/components/LegalShell";
 
-export const metadata: Metadata = { title: "Terms of Use" };
+export const metadata: Metadata = {
+  title: "Terms of Use",
+  description:
+    "Terms for using the free mortgage readiness check: educational estimates only, no loan application, no professional advice, and fair-lending commitments.",
+};
 
 export default function TermsPage() {
   return (

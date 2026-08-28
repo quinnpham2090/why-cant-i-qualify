@@ -44,7 +44,7 @@ import {
 import { DTI_SUBSCORE_BANDS, FRONT_END_SUBSCORE_BANDS } from "./tables";
 import { identifyObstacles } from "./obstacles";
 import { buildDisclaimers } from "./disclaimers";
-import { determineNonQmPrograms, isNonQm } from "./non-qm";
+import { determineNonQmPrograms, dscrFromRent, isNonQm } from "./non-qm";
 import {
   cashToCloseRange,
   maxLoanAmount,
@@ -117,10 +117,12 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
   const i = normalizeInputs(rawInputs);
   const assumptions: Assumption[] = [];
 
-  // 2. Qualifying income
-  const incomeRes = calculateQualifyingIncome(i);
+  // 2. Qualifying income (co-borrower income is simply added when present —
+  // P13; lenders sum documented income across borrowers on a joint app)
+  const combinedGross =
+    i.grossMonthlyIncome + (i.coBorrowerIncome != null && i.coBorrowerIncome > 0 ? i.coBorrowerIncome : 0);
+  const incomeRes = calculateQualifyingIncome({ ...i, grossMonthlyIncome: combinedGross });
   assumptions.push(...incomeRes.assumptions);
-  const qualifyingIncome = incomeRes.monthly;
 
   // 3. Existing debt
   const totalExistingDebt = calculateTotalExistingDebt(i);
@@ -161,6 +163,26 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
   const priceProgramForPiti = isNonQm(program)
     ? (agencyPrograms.find((p) => p !== LoanType.UNKNOWN) ?? LoanType.CONVENTIONAL_CONF)
     : program;
+
+  // 2b. Qualifying income merge (FIX_PLAN V1.6 P1): asset-depletion and
+  // bank-statement style programs imply a "qualifying income" that standard
+  // documentation ignores. Take the best documented-vs-program estimate so a
+  // retiree with $500K assets is not scored at zero income. The merge runs
+  // after program eligibility so non-QM income estimates are available, but
+  // before DTI so every downstream ratio uses it.
+  const nonQmIncomeCandidates = nonQm
+    .map((n) => n.qualifyingIncome)
+    .filter((v) => v > 0);
+  const bestNonQmIncome =
+    nonQmIncomeCandidates.length > 0 ? Math.max(...nonQmIncomeCandidates) : 0;
+  const qualifyingIncome = Math.max(incomeRes.monthly, bestNonQmIncome);
+  if (bestNonQmIncome > incomeRes.monthly) {
+    assumptions.push({
+      key: "qualifying_income_non_qm",
+      description:
+        "Qualifying income reflects the asset- or bank-statement program estimate, which may differ from tax-return income.",
+    });
+  }
 
   // 7. Rate + MI + PITI at the target price
   const down = Math.min(i.downPaymentAvailable, price);
@@ -250,6 +272,56 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
   };
   subScores.property = scoreProperty(i);
   subScores.documentation = scoreDocumentation(i);
+
+  // 10b. No-ratio program override (FIX_PLAN V1.6 P1 step 2): DSCR and
+  // asset-qualifier programs qualify on rent coverage or assets, not personal
+  // DTI — so when such a program is eligible, debt/payment are scored on the
+  // program's coverage bands instead of the personal DTI bands. The override
+  // is disclosed as an assumption (audit constraint #11).
+  if (effectivePrograms.includes(LoanType.DSCR) || effectivePrograms.includes(LoanType.ASSET_QUALIFIER)) {
+    let coverageScore: number | null = null;
+    let coverageSummary = "";
+
+    if (effectivePrograms.includes(LoanType.DSCR)) {
+      const dscr = dscrFromRent(i.expectedMonthlyRent ?? 0, p);
+      if (dscr != null) {
+        coverageScore = dscr >= 1.25 ? 90 : dscr >= 1.1 ? 75 : dscr >= 1.0 ? 60 : 40;
+        coverageSummary = `Rent coverage (DSCR) ${(dscr * 100).toFixed(0)}% of payment`;
+        assumptions.push({
+          key: "dscr_coverage",
+          description:
+            "For the investor cash-flow program, readiness was scored on how well the expected rent covers the payment (rent coverage), not on your personal debt-to-income ratio.",
+        });
+      }
+    }
+    if (coverageScore == null && effectivePrograms.includes(LoanType.ASSET_QUALIFIER)) {
+      // Asset-based qualification: coverage = qualifying income derived from assets.
+      coverageScore = 75;
+      coverageSummary = "Qualifies on assets rather than personal debt-to-income";
+      assumptions.push({
+        key: "dscr_coverage",
+        description:
+          "For the asset-based program, readiness was scored on asset strength rather than your personal debt-to-income ratio.",
+      });
+    }
+
+    if (coverageScore != null) {
+      subScores.debt = {
+        category: "debt",
+        score: coverageScore,
+        tier: coverageScore >= 90 ? "strong" : coverageScore >= 75 ? "workable" : "stretched",
+        summary: coverageSummary,
+        redFlags: [],
+      };
+      subScores.payment = {
+        category: "payment",
+        score: coverageScore,
+        tier: coverageScore >= 90 ? "strong" : coverageScore >= 75 ? "workable" : "stretched",
+        summary: coverageSummary,
+        redFlags: [],
+      };
+    }
+  }
 
   // 11. Composite
   const composite = computeComposite(subScores);

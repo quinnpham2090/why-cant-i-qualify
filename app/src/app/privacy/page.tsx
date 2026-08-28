@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { LegalShell } from "@/components/LegalShell";
 
-export const metadata: Metadata = { title: "Privacy Policy" };
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description:
+    "What we collect during the free mortgage readiness check, how we use and retain it, and your privacy choices. No Social Security number, no credit pull.",
+};
 
 export default function PrivacyPage() {
   return (

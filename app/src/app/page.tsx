@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DISCLOSURES } from "@/config/disclosures";
 import { HERO_HEADLINE, HERO_SUBHEAD } from "@/engine/labels";
+import { HeroIllustration } from "@/components/HeroIllustration";
 
 const trustBadges = [
   { label: "No credit pull", icon: "shield" },
@@ -103,6 +104,10 @@ export default function Home() {
           <p className="mx-auto mt-5 max-w-2xl font-warm-serif text-lg leading-relaxed text-warm-700 sm:text-xl">
             {HERO_SUBHEAD}
           </p>
+
+          <div className="mx-auto mt-8 max-w-md text-sage-600 sm:max-w-lg">
+            <HeroIllustration className="w-full" />
+          </div>
 
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link

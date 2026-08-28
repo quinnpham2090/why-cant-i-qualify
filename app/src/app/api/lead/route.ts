@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServer, isSupabaseConfigured } from "@/lib/supabase";
-import { sendConsumerConfirmation, sendMloNotification } from "@/lib/email";
+import { sendConsumerConfirmation, sendMloNotification, escapeHtml } from "@/lib/email";
+import { rateLimit } from "@/lib/rate-limit";
 import { TCPA_CONSENT_TEXT, LEAD_TRANSFER_TEXT } from "@/config/disclosures";
 
 export const runtime = "nodejs";
@@ -19,10 +20,33 @@ interface LeadPayload {
   turnstileToken?: string;
 }
 
+/** Field-level input caps (FIX_PLAN V1.6 P2) — blocks oversized/bot payloads. */
+const FIELD_CAPS: Record<string, number> = {
+  name: 120,
+  email: 254, // RFC 5321 maximum
+  phone: 20,
+  zip: 10,
+  preferredTime: 20,
+  compositeTier: 40,
+  engineVersion: 20,
+};
+
+/** Whole-body cap: the diagnostic result/inputs JSON a legit client sends is a few KB. */
+const MAX_BODY_BYTES = 32_768;
+
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const ZIP_RE = /^\d{5}(-\d{4})?$/;
+
+/** Best-effort client IP (Vercel/Cloudflare provide x-forwarded-for / x-real-ip). */
+function clientIp(request: Request): string {
+  const fwd = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return fwd || request.headers.get("x-real-ip")?.trim() || "unknown";
+}
+
 /** Verify Cloudflare Turnstile (anti-spam). Skipped if not configured. */
 async function verifyTurnstile(token?: string): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) return true; // not configured -> allow (dev)
+  if (!secret) return true; // not configured -> allow (dev); rate limit + caps still apply
   if (!token) return false;
   try {
     const fd = new URLSearchParams();
@@ -40,42 +64,88 @@ async function verifyTurnstile(token?: string): Promise<boolean> {
 }
 
 export async function POST(request: Request) {
+  // -- 0. Payload size cap (before parsing) --------------------------------
+  const rawLength = Number(request.headers.get("content-length") ?? "0");
+  if (rawLength > MAX_BODY_BYTES) {
+    return NextResponse.json(
+      { ok: false, error: "Request too large." },
+      { status: 413 },
+    );
+  }
+
   let body: LeadPayload;
   try {
-    body = (await request.json()) as LeadPayload;
+    const raw = await request.text();
+    if (raw.length > MAX_BODY_BYTES) {
+      return NextResponse.json({ ok: false, error: "Request too large." }, { status: 413 });
+    }
+    body = JSON.parse(raw) as LeadPayload;
   } catch {
     return NextResponse.json({ ok: false, error: "Invalid JSON" }, { status: 400 });
   }
 
-  // Basic validation
-  if (!body.name?.trim() || !body.email?.trim()) {
+  // -- 1. Rate limit per IP: 5/min (FIX_PLAN V1.6 P2) ----------------------
+  const ip = clientIp(request);
+  const rl = rateLimit(ip);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { ok: false, error: "Too many requests. Please try again in a minute." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
+    );
+  }
+
+  // -- 2. Field caps --------------------------------------------------------
+  for (const [field, cap] of Object.entries(FIELD_CAPS)) {
+    const value = (body as unknown as Record<string, unknown>)[field];
+    if (value != null && String(value).length > cap) {
+      return NextResponse.json(
+        { ok: false, error: `${field} is too long.` },
+        { status: 400 },
+      );
+    }
+  }
+
+  // -- 3. Basic validation ---------------------------------------------------
+  const rawName = String(body.name ?? "").trim();
+  const rawEmail = String(body.email ?? "").trim().toLowerCase();
+  if (!rawName || !rawEmail) {
     return NextResponse.json({ ok: false, error: "Name and email are required." }, { status: 400 });
   }
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.email)) {
+  if (!EMAIL_RE.test(rawEmail)) {
     return NextResponse.json({ ok: false, error: "Please enter a valid email." }, { status: 400 });
+  }
+  if (body.zip && !ZIP_RE.test(body.zip.trim())) {
+    return NextResponse.json(
+      { ok: false, error: "Please enter a valid ZIP code (e.g. 33101 or 33101-1234)." },
+      { status: 400 },
+    );
   }
   if (!body.consentGiven) {
     return NextResponse.json({ ok: false, error: "Consent is required to submit." }, { status: 400 });
   }
 
-  // Anti-spam
+  // -- 4. Anti-spam (Turnstile; 422 when configured and missing/invalid) -----
   const human = await verifyTurnstile(body.turnstileToken);
   if (!human) {
     return NextResponse.json({ ok: false, error: "Spam check failed." }, { status: 422 });
   }
 
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+  // -- 5. Sanitized values for DB + email (FIX_PLAN V1.6 P11/P12) -----------
+  // Slice BEFORE escaping so an entity can never be cut in half; escape so a
+  // stored name can never execute in the MLO dashboard (defense-in-depth).
+  const safeName = escapeHtml(rawName.slice(0, 60));
+  const email = rawEmail; // already trimmed + lowercased
   const userAgent = request.headers.get("user-agent") ?? null;
 
-  // Persist (degrade gracefully if Supabase not configured yet)
+  // -- 6. Persist (degrade gracefully if Supabase not configured yet) -------
   let leadId: string | null = null;
   if (isSupabaseConfigured()) {
     const db = getSupabaseServer()!;
     const { data: leadRow, error: leadErr } = await db
       .from("leads")
       .insert({
-        name: body.name.trim(),
-        email: body.email.trim(),
+        name: safeName,
+        email,
         phone: body.phone ?? null,
         zip: body.zip ?? null,
         preferred_time: body.preferredTime ?? null,
@@ -105,10 +175,10 @@ export async function POST(request: Request) {
     }
   }
 
-  // Emails (non-blocking for the response)
+  // -- 7. Emails (non-blocking for the response) -----------------------------
   const emailData = {
-    name: body.name.trim(),
-    email: body.email.trim(),
+    name: safeName,
+    email,
     phone: body.phone,
     zip: body.zip,
     preferredTime: body.preferredTime,

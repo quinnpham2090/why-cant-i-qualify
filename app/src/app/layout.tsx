@@ -14,6 +14,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // Base for resolving OG/twitter image URLs (sitemap.ts/robots.ts share it).
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://why-cant-i-qualify.vercel.app",
+  ),
   title: {
     default: "Why Can't I Qualify? — Free Mortgage Readiness Check",
     template: "%s | Why Can't I Qualify?",

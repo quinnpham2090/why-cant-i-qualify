@@ -52,10 +52,25 @@ create table if not exists public.diagnostic_results (
   engine_version  text not null
 );
 
+-- ---------- funnel_events ----------
+-- Anonymous product analytics (FIX_PLAN V1.6 P10 acceptance: completion-rate
+-- measurement). The client sends NO PII and no financial figures — only event
+-- names, wizard step, and coarse enum answers (lib/funnel.ts). Public insert
+-- only; reads are service-role.
+create table if not exists public.funnel_events (
+  id           uuid primary key default gen_random_uuid(),
+  created_at   timestamptz not null default now(),
+  event_name   text not null,
+  step         int,
+  meta         jsonb,
+  client_ts    timestamptz
+);
+
 -- ---------- Row Level Security ----------
 alter table public.leads               enable row level security;
 alter table public.consents            enable row level security;
 alter table public.diagnostic_results  enable row level security;
+alter table public.funnel_events       enable row level security;
 
 -- anon (public web) can INSERT only. No SELECT/UPDATE/DELETE.
 create policy "anon_insert_leads" on public.leads
@@ -63,6 +78,8 @@ create policy "anon_insert_leads" on public.leads
 create policy "anon_insert_consents" on public.consents
   for insert to anon with check (true);
 create policy "anon_insert_results" on public.diagnostic_results
+  for insert to anon with check (true);
+create policy "anon_insert_funnel_events" on public.funnel_events
   for insert to anon with check (true);
 
 -- Indexes for the MLO dashboard / follow-up queries (service role).

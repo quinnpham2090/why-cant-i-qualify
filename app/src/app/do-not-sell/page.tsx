@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { LegalShell } from "@/components/LegalShell";
 
-export const metadata: Metadata = { title: "Do Not Sell or Share My Personal Information" };
+export const metadata: Metadata = {
+  title: "Do Not Sell or Share My Personal Information",
+  description:
+    "We do not sell personal information collected by the readiness check. California residents can submit a do-not-sell or share request here.",
+};
 
 export default function DoNotSellPage() {
   return (
