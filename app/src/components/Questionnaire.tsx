@@ -30,6 +30,7 @@ function Field({ label, help, children }: { label: string; help?: string; childr
 
 export function Questionnaire() {
   const [result, setResult] = useState<DiagnosticResult | null>(null);
+  const [lastInputs, setLastInputs] = useState<EngineInputs | null>(null);
 
   // Form state
   const [loanPurpose, setLoanPurpose] = useState<LoanPurpose>(LoanPurpose.PURCHASE);
@@ -71,6 +72,7 @@ export function Questionnaire() {
       state: "FL", // V1 geofenced to Florida
     };
     setResult(runDiagnostic(inputs));
+    setLastInputs(inputs);
     // Scroll to results
     setTimeout(() => {
       document.getElementById("results-heading")?.scrollIntoView({ behavior: "smooth" });
@@ -82,10 +84,10 @@ export function Questionnaire() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  if (result) {
+  if (result && lastInputs) {
     return (
       <div className="space-y-6">
-        <ResultsView result={result} />
+        <ResultsView result={result} inputs={lastInputs} />
         <div className="text-center">
           <button
             type="button"

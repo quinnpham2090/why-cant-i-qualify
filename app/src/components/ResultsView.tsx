@@ -2,7 +2,8 @@
 
 import { TIER_LABELS, CONFIDENCE_LABELS, RESULTS_HEADLINE, RESULTS_SUBHEAD } from "@/engine/labels";
 import { RESULT_DISCLAIMER_BLOCK } from "@/config/disclosures";
-import type { DiagnosticResult } from "@/engine/types";
+import type { DiagnosticResult, EngineInputs } from "@/engine/types";
+import { LeadCaptureForm } from "@/components/LeadCaptureForm";
 
 const fmtUSD = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -29,7 +30,7 @@ const TIER_BADGE: Record<string, string> = {
   limited_fit: "bg-rose-100 text-rose-900",
 };
 
-export function ResultsView({ result }: { result: DiagnosticResult }) {
+export function ResultsView({ result, inputs }: { result: DiagnosticResult; inputs: EngineInputs }) {
   const pillarOrder = ["income", "debt", "credit", "cash", "payment", "property", "documentation"];
   const pillClass = TIER_BADGE[result.compositeTier] ?? "bg-neutral-100 text-neutral-800";
 
@@ -201,20 +202,15 @@ export function ResultsView({ result }: { result: DiagnosticResult }) {
         </ul>
       </aside>
 
-      {/* CTA — same for every result (no gating) */}
-      <div className="rounded-2xl bg-emerald-800 p-6 text-center text-white">
-        <h3 className="text-lg font-semibold">Want a human to walk through this with you?</h3>
-        <p className="mx-auto mt-2 max-w-md text-sm text-emerald-100">
-          Book a free, no-obligation review with a licensed loan originator to talk
-          about your specific situation.
-        </p>
-        <a
-          href="/book"
-          className="mt-4 inline-block rounded-full bg-white px-7 py-3 text-base font-semibold text-emerald-800 transition hover:bg-emerald-50"
-        >
-          Book a free review
-        </a>
-      </div>
+      {/* Lead capture — same for every result (no gating on the outcome) */}
+      <LeadCaptureForm
+        context={{
+          compositeTier: TIER_LABELS[result.compositeTier],
+          engineVersion: result.engineVersion,
+          inputs,
+          result,
+        }}
+      />
     </section>
   );
 }
