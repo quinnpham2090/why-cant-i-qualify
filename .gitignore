@@ -1,0 +1,27 @@
+# Why Can't I Qualify? — root gitignore
+# The Next.js application lives in app/ and has its own .gitignore; this
+# covers repo-level scratch files and anything that slips through.
+
+# Node
+node_modules/
+.next/
+out/
+build/
+dist/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+
+# Research scratch (transient fetch/parse artifacts) — keep planning docs
+*.raw.json
+
+# SSH keys must never be committed
+id_*
+*.pem
