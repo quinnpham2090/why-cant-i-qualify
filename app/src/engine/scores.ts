@@ -3,11 +3,9 @@
 import {
   CATEGORY_WEIGHTS,
   DTI_SUBSCORE_BANDS,
-  FRONT_END_SUBSCORE_BANDS,
   COMPOSITE_TIERS,
 } from "./tables";
 import { CompositeTier, IncomeType, PropertyType, type EngineInputs, type SubScore } from "./types";
-import type { CreditProfile } from "./credit";
 
 export function scoreFromBand(value: number, bands: { max: number; score: number }[]): number {
   for (const b of bands) {

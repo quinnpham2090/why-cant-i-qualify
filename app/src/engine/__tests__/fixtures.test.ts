@@ -13,7 +13,15 @@
 
 import { describe, expect, it } from "vitest";
 import { runDiagnostic } from "../index";
-import { CompositeTier, CreditEvent, IncomeType, LoanType, PropertyType, PropertyUse } from "../types";
+import {
+  CompositeTier,
+  CreditEvent,
+  IncomeDocumentation,
+  IncomeType,
+  LoanType,
+  PropertyType,
+  PropertyUse,
+} from "../types";
 import type { EngineInputs } from "../types";
 
 function base(overrides: Partial<EngineInputs>): EngineInputs {
@@ -207,6 +215,94 @@ describe("golden fixtures", () => {
       }),
     );
     expect(r.compositeScore).toBeGreaterThanOrEqual(55);
+  });
+});
+
+describe("non-QM fixtures (Phase C)", () => {
+  it("NQM1: self-employed, 24-mo bank statements, 640 FICO -> bank_statement surfaced", () => {
+    const r = runDiagnostic(
+      base({
+        grossMonthlyIncome: 9000,
+        incomeType: IncomeType.SELF_EMPLOYED,
+        incomeDocumentation: IncomeDocumentation.BANK_STATEMENT_24,
+        creditScoreSelfReported: 660, // engine applies -20 haircut -> 640
+        totalMonthlyDebtPayments: 600,
+        downPaymentAvailable: 75000, // 25% of 300k
+        targetPurchasePrice: 300000,
+        propertyType: PropertyType.SFR,
+        employmentYearsInField: 3,
+        liquidAssetsAfterClose: 20000,
+      }),
+    );
+    expect(r.eligiblePrograms).toContain(LoanType.BANK_STATEMENT);
+    // Must not be scored limited_fit merely for being self-employed
+    expect(r.compositeTier).not.toBe(CompositeTier.LIMITED_FIT);
+    // Non-QM variance disclaimer must be present
+    expect(r.disclaimers.some((d) => d.includes("non-QM"))).toBe(true);
+    // Bank-statement income assumption disclosed
+    expect(r.assumptionsUsed.some((a) => a.key === "bank_statement_income")).toBe(true);
+  });
+
+  it("NQM2: investor with DSCR-covering rent -> DSCR surfaced, not limited_fit", () => {
+    const r = runDiagnostic(
+      base({
+        grossMonthlyIncome: 3000,
+        incomeType: IncomeType.W2,
+        incomeDocumentation: IncomeDocumentation.W2_STUBS,
+        creditScoreSelfReported: 700, // -> 680 haircut
+        totalMonthlyDebtPayments: 800,
+        downPaymentAvailable: 50000, // 20% of 250k
+        targetPurchasePrice: 250000,
+        propertyUse: PropertyUse.INVESTMENT,
+        expectedMonthlyRent: 2600,
+        propertyType: PropertyType.SFR,
+        employmentYearsInField: 3,
+        liquidAssetsAfterClose: 15000,
+      }),
+    );
+    expect(r.eligiblePrograms).toContain(LoanType.DSCR);
+    expect(r.compositeTier).not.toBe(CompositeTier.LIMITED_FIT);
+    expect(r.disclaimers.some((d) => d.includes("non-QM"))).toBe(true);
+  });
+
+  it("NQM3: retiree with $500k liquid assets -> asset_qualifier surfaced", () => {
+    const r = runDiagnostic(
+      base({
+        grossMonthlyIncome: 0,
+        incomeType: IncomeType.RETIRED_FIXED,
+        incomeDocumentation: IncomeDocumentation.ASSET_DEPLETION,
+        creditScoreSelfReported: 720, // -> 700 haircut
+        totalMonthlyDebtPayments: 200,
+        downPaymentAvailable: 90000, // 30% of 300k
+        targetPurchasePrice: 300000,
+        liquidAssetsTotal: 500000,
+        propertyType: PropertyType.SFR,
+        liquidAssetsAfterClose: 20000,
+      }),
+    );
+    expect(r.eligiblePrograms).toContain(LoanType.ASSET_QUALIFIER);
+    expect(r.assumptionsUsed.some((a) => a.key === "asset_depletion_income")).toBe(true);
+    expect(r.disclaimers.some((d) => d.includes("non-QM"))).toBe(true);
+  });
+
+  it("NQM4: cash-undocumented income -> surfaced with disclosure, not hidden", () => {
+    const r = runDiagnostic(
+      base({
+        grossMonthlyIncome: 7000,
+        incomeType: IncomeType.SELF_EMPLOYED,
+        incomeDocumentation: IncomeDocumentation.CASH_UNDOCUMENTED,
+        cashIncomePortionPct: 30,
+        creditScoreSelfReported: 680, // -> 660 haircut
+        totalMonthlyDebtPayments: 500,
+        downPaymentAvailable: 75000, // 25% of 300k
+        targetPurchasePrice: 300000,
+        propertyType: PropertyType.SFR,
+        employmentYearsInField: 3,
+        liquidAssetsAfterClose: 20000,
+      }),
+    );
+    expect(r.assumptionsUsed.some((a) => a.key === "cash_income_estimate")).toBe(true);
+    expect(r.compositeTier).not.toBe(CompositeTier.LIMITED_FIT);
   });
 });
 

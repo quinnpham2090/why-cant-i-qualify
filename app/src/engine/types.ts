@@ -28,6 +28,37 @@ export enum LoanType {
   FHA = "fha",
   VA = "va",
   USDA = "usda",
+  // Non-QM (non-agency) programs — see RESEARCH_NON_QM.md
+  BANK_STATEMENT = "bank_statement",
+  PANDL_ONLY = "pandl_only",
+  DSCR = "dscr",
+  ASSET_QUALIFIER = "asset_qualifier",
+  ITIN = "itin",
+  NON_QM_JUMBO = "non_qm_jumbo",
+  NON_WARRANTABLE = "non_warrantable",
+  UNKNOWN = "unknown",
+}
+
+/**
+ * HOW income is documented — independent of the income SOURCE.
+ * Answers the operator's "is it cash (if not 1099 or W2 or business etc)" ask.
+ * Taxonomy from RESEARCH_NON_QM.md §3.
+ */
+export enum IncomeDocumentation {
+  W2_STUBS = "w2_stubs",
+  W2_OFFER_LETTER = "w2_offer_letter",
+  FULL_TAX_2YR = "full_tax_2yr",
+  FULL_TAX_1YR = "full_tax_1yr",
+  BANK_STATEMENT_12 = "bank_statement_12",
+  BANK_STATEMENT_24 = "bank_statement_24",
+  PANDL_CPA = "pandl_cpa",
+  PANDL_PREPARED = "pandl_prepared",
+  ONE_O_NINE_NINE = "one_o_nine_nine",
+  WVOE_ONLY = "wvoe_only",
+  ASSET_DEPLETION = "asset_depletion",
+  DSCR_RENT = "dscr_rent",
+  CASH_UNDOCUMENTED = "cash_undocumented",
+  NO_DOC = "no_doc",
   UNKNOWN = "unknown",
 }
 
@@ -101,6 +132,14 @@ export interface EngineInputs {
   loanType: LoanType;
   grossMonthlyIncome: number;
   incomeType: IncomeType;
+  /** How income is documented (bank statements, P&L, 1099, cash, etc.). */
+  incomeDocumentation?: IncomeDocumentation;
+  /** Estimated share (0–100) of income paid in cash and not on tax returns. */
+  cashIncomePortionPct?: number | null;
+  /** Monthly gross rent the property is expected to produce (DSCR / investors). */
+  expectedMonthlyRent?: number | null;
+  /** Total liquid assets before down payment (asset qualification). */
+  liquidAssetsTotal?: number | null;
   /** Self-reported FICO 300–850, or null if unknown. NEVER a bureau pull. */
   creditScoreSelfReported: number | null;
   creditTierSelfReported: CreditTier | null;

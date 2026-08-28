@@ -7,6 +7,7 @@
  */
 
 import { LoanType, type EngineInputs } from "./types";
+import { isNonQm } from "./non-qm";
 
 /** Standard educational disclaimers shown with every result. */
 export function buildDisclaimers(i: EngineInputs): string[] {
@@ -27,6 +28,11 @@ export function buildDisclaimers(i: EngineInputs): string[] {
   if (i.loanType === LoanType.USDA) {
     programSpecific.push(
       "This tool is not affiliated with the U.S. Department of Agriculture. USDA loans are issued by private lenders.",
+    );
+  }
+  if (isNonQm(i.loanType)) {
+    programSpecific.push(
+      "Some programs shown are non-QM loans offered by specialized lenders. They are not Qualified Mortgages under the CFPB's Ability-to-Repay rule, and their guidelines vary significantly by lender. This estimate reflects common published guidelines and does not determine eligibility.",
     );
   }
 

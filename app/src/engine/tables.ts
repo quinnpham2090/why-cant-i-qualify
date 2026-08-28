@@ -135,23 +135,23 @@ export const COMPOSITE_TIERS: {
 }[] = [
   {
     min: 85, max: 100, tier: CompositeTier.STRONG_FIT,
-    message: "Strong preliminary position based on the information provided. A licensed loan originator can review a formal prequalification with you.",
+    message: "You're in a strong position based on what you shared. A licensed loan originator can take the next step with you whenever you're ready.",
   },
   {
     min: 70, max: 84, tier: CompositeTier.GOOD_FIT,
-    message: "Workable position, but it may help to address the watch-list items before applying.",
+    message: "You're closer than you may think. A few things are worth tidying up, and the breakdown below shows where.",
   },
   {
     min: 55, max: 69, tier: CompositeTier.WORKABLE,
-    message: "Possible, though hurdles may affect pricing or could call for a co-borrower, gift funds, or a down-payment adjustment.",
+    message: "There's a workable path here. Some factors may affect pricing or suggest a co-borrower, gift funds, or a different down payment.",
   },
   {
     min: 40, max: 54, tier: CompositeTier.SOME_CONSIDERATIONS,
-    message: "Material issues to address. Government-backed programs (FHA, VA, USDA) may be worth exploring if you are eligible.",
+    message: "There are real things to work on — and real programs that work with that. The steps below are where we'd start.",
   },
   {
     min: 0, max: 39, tier: CompositeTier.LIMITED_FIT,
-    message: "Significant obstacles at this time. Below is a prioritized plan of items that may improve your options.",
+    message: "Being turned down is not the end of the road. Below is a starting point — small changes here often move the needle more than people expect.",
   },
 ];
 

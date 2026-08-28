@@ -15,7 +15,6 @@ import {
 import {
   LoanType,
   PropertyType,
-  PropertyUse,
   type Assumption,
   type Confidence,
   type DiagnosticResult,
@@ -45,6 +44,7 @@ import {
 import { DTI_SUBSCORE_BANDS, FRONT_END_SUBSCORE_BANDS } from "./tables";
 import { identifyObstacles } from "./obstacles";
 import { buildDisclaimers } from "./disclaimers";
+import { determineNonQmPrograms, isNonQm } from "./non-qm";
 import {
   cashToCloseRange,
   maxLoanAmount,
@@ -141,21 +141,38 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
   assumptions.push(...creditRes.assumptions);
   const credit = creditRes.profile;
 
-  // 6. Eligible programs
-  const eligiblePrograms = determineEligiblePrograms(i, credit);
-  const program = priceProgram(i, eligiblePrograms);
+  // 6. Eligible programs (agency) + non-QM programs
+  const agencyPrograms = determineEligiblePrograms(i, credit);
+  const nonQm = determineNonQmPrograms(i, credit);
+  assumptions.push(...nonQm.flatMap((n) => n.assumptions));
+  const nonQmLoanTypes = nonQm.map((n) => n.loanType);
+  const merged = [...agencyPrograms.filter((p) => p !== LoanType.UNKNOWN), ...nonQmLoanTypes];
+  // Deduplicate while preserving order
+  const seen = new Set<LoanType>();
+  const eligibleProgramsDedup = merged.filter((p) => {
+    if (seen.has(p)) return false;
+    seen.add(p);
+    return true;
+  });
+  const effectivePrograms = eligibleProgramsDedup.length > 0 ? eligibleProgramsDedup : [LoanType.UNKNOWN];
+  const program = priceProgram(i, effectivePrograms);
+  // Pricing engine only knows QM programs; for non-QM pricing, fall back to the
+  // user's selected QM program (or first agency program) so ranges stay sane.
+  const priceProgramForPiti = isNonQm(program)
+    ? (agencyPrograms.find((p) => p !== LoanType.UNKNOWN) ?? LoanType.CONVENTIONAL_CONF)
+    : program;
 
   // 7. Rate + MI + PITI at the target price
   const down = Math.min(i.downPaymentAvailable, price);
   const L = Math.max(price - down, 0);
   const ltvPct = price > 0 ? (L / price) * 100 : 100;
-  const rate = assumedRate(program, credit.fico, ltvPct, TERM_YEARS);
+  const rate = assumedRate(priceProgramForPiti, credit.fico, ltvPct, TERM_YEARS);
   assumptions.push({
     key: "assumed_rate",
     description: `An illustrative interest rate of ${rate.toFixed(2)}% was assumed. Your actual rate depends on your credit profile, the property, and the lender.`,
   });
 
-  const annualMI = mortgageInsuranceAnnual(program, L, ltvPct, credit.fico);
+  const annualMI = mortgageInsuranceAnnual(priceProgramForPiti, L, ltvPct, credit.fico);
   if (annualMI > 0) {
     assumptions.push({
       key: "mortgage_insurance",
@@ -203,7 +220,7 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
   };
 
   // 9. Cash to close
-  const ctcMidPct = CLOSING_COST_MID_PCT[program] ?? 4.0;
+  const ctcMidPct = CLOSING_COST_MID_PCT[priceProgramForPiti] ?? 4.0;
   const ctc = cashToCloseRange(price, ctcMidPct);
   const cashToClose: Range = {
     low: roundDollars(ctc.low, 500),
@@ -238,16 +255,19 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
   const composite = computeComposite(subScores);
 
   // 12. Obstacles + strengths
-  const { primary, secondary, strengths } = identifyObstacles(i, subScores, credit, eligiblePrograms);
+  const { primary, secondary, strengths } = identifyObstacles(i, subScores, credit, effectivePrograms);
 
   // 13. Confidence
   const { confidence, reasons } = computeConfidence(i);
 
   // 14. Recommended program
-  const recommendedProgram = recommendProgram(eligiblePrograms, i);
+  const recommendedProgram = recommendProgram(effectivePrograms, i);
 
-  // 15. Disclaimers
-  const disclaimers = buildDisclaimers(i);
+  // 15. Disclaimers (non-QM variance disclosed whenever a non-QM program is surfaced)
+  const disclaimers = buildDisclaimers({
+    ...i,
+    loanType: effectivePrograms.some((p) => isNonQm(p)) ? LoanType.BANK_STATEMENT : i.loanType,
+  });
 
   return {
     qualifyingIncome,
@@ -269,7 +289,7 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
     primaryObstacle: primary,
     secondaryObstacles: secondary,
     strengths,
-    eligiblePrograms,
+    eligiblePrograms: effectivePrograms,
     recommendedProgram,
     confidence,
     confidenceReasons: reasons,
