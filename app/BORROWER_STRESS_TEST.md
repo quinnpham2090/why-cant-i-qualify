@@ -906,4 +906,4 @@
 
 ---
 
-*Method: 40 scenarios run through the live deterministic engine at 2026-08-29T14:13:52.407Z. Tiers, DTI, eligible programs, obstacles, strengths, assumptions, and confidence are the engine's actual outputs. Missing-question and solution rankings are synthesized from the coverage gaps above.*
+*Method: 40 scenarios run through the live deterministic engine at 2026-08-29T15:23:41.414Z. Tiers, DTI, eligible programs, obstacles, strengths, assumptions, and confidence are the engine's actual outputs. Missing-question and solution rankings are synthesized from the coverage gaps above.*
