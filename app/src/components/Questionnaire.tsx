@@ -59,7 +59,29 @@ function Field({
   );
 }
 
-const STEP_NAMES = ["Your goal", "Income", "Credit", "Money"] as const;
+
+function ChoiceGroup({ id, value, onChange, options }: { id?: string, value: string, onChange: (val: string) => void, options: {value: string, label: string}[] }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 mt-1" id={id}>
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => onChange(opt.value)}
+          className={`flex flex-col text-left items-start justify-start p-4 rounded-xl border transition-all duration-200 ${
+            value === opt.value
+              ? "border-sage-600 bg-sage-50 ring-1 ring-sage-600 shadow-sm"
+              : "border-sand-200 bg-surface hover:border-sage-400 hover:bg-sand-50"
+          }`}
+        >
+          <span className={`text-sm font-medium ${value === opt.value ? 'text-warm-900' : 'text-warm-700'}`}>{opt.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const STEP_NAMES = ["Goal", "Background", "Income", "Co-Borrower", "Credit", "Assets", "Debt"] as const;
 
 /**
  * P10 analytics helper: coarse enum only (loan type + occupancy) so the
@@ -264,9 +286,9 @@ export function Questionnaire() {
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateStep(2)) {
+    if (!validateStep(4)) {
       // Last-step safety net: if credit answers regressed, send the user back.
-      goToStep(2);
+      goToStep(4);
       return;
     }
     const debtTotal = num(debt);
@@ -418,13 +440,13 @@ export function Questionnaire() {
 
   if (result && lastInputs) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-2xl mx-auto">
         <ResultsView result={result} inputs={lastInputs} />
         <div className="text-center">
           <button
             type="button"
             onClick={startOver}
-            className="rounded-full border border-sand-200 px-6 py-2.5 text-sm font-medium text-warm-700 hover:bg-sand-50"
+            className="rounded-full border border-sand-200 bg-surface px-6 py-2.5 text-sm font-medium text-warm-700 hover:bg-sand-50 transition-colors"
           >
             Start over
           </button>
@@ -434,28 +456,25 @@ export function Questionnaire() {
   }
 
   return (
-    <form ref={formRef} onSubmit={onSubmit} className="space-y-6" noValidate>
-      {/* Screen-reader step announcements (P10 aria-live) */}
+    <form ref={formRef} onSubmit={onSubmit} className="space-y-8 max-w-xl mx-auto" noValidate>
       <p aria-live="polite" className="sr-only">
         {stepAnnouncement}
       </p>
 
-      {/* Sticky progress indicator — current step marked (P10) */}
       <nav
         aria-label="Progress"
-        className="sticky top-0 z-10 rounded-2xl border border-sand-200 bg-sand-50/95 p-5 backdrop-blur"
+        className="sticky top-0 z-10 rounded-2xl border border-sand-200 bg-sand-50/95 p-4 sm:p-5 backdrop-blur"
       >
-        <ol className="flex items-center justify-between gap-2">
+        <ol className="hidden sm:flex items-center justify-between gap-1">
           {STEP_NAMES.map((name, idx) => {
-            const state =
-              idx === step ? "current" : idx < step ? "done" : "upcoming";
+            const state = idx === step ? "current" : idx < step ? "done" : "upcoming";
             return (
-              <li key={name} className="flex flex-1 items-center gap-2">
+              <li key={name} className="flex flex-1 items-center gap-1.5">
                 <span
                   aria-hidden="true"
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all ${
                     state === "current"
-                      ? "bg-accent text-accent-text ring-2 ring-sage-600 ring-offset-2 ring-offset-sand-50"
+                      ? "bg-accent text-accent-text ring-2 ring-sage-600 ring-offset-2 ring-offset-sand-50 scale-110"
                       : state === "done"
                         ? "bg-accent text-accent-text"
                         : "bg-surface text-warm-500 border border-sand-200"
@@ -465,946 +484,357 @@ export function Questionnaire() {
                 </span>
                 <span
                   aria-current={state === "current" ? "step" : undefined}
-                  className={`hidden text-sm sm:inline ${
+                  className={`text-[11px] leading-tight ${
                     state === "current" ? "font-semibold text-warm-900" : "font-medium text-warm-500"
-                  }`}
+                  } hidden lg:inline`}
                 >
                   {name}
                 </span>
                 {idx < STEP_NAMES.length - 1 && (
-                  <span aria-hidden="true" className="hidden h-px flex-1 bg-sage-100 sm:block" />
+                  <span aria-hidden="true" className={`hidden h-px flex-1 sm:block ${idx < step ? "bg-sage-300" : "bg-sage-100"}`} />
                 )}
               </li>
             );
           })}
         </ol>
-        <p className="mt-2 text-xs text-warm-700 sm:hidden">
-          {`Step ${step + 1} of ${STEP_NAMES.length}: ${STEP_NAMES[step]}`}
-        </p>
+        <div className="sm:hidden flex items-center justify-between">
+          <p className="text-sm font-semibold text-warm-900">
+            Step {step + 1} of {STEP_NAMES.length}: {STEP_NAMES[step]}
+          </p>
+          <span className="text-xs text-warm-500">{Math.round(((step + 1) / STEP_NAMES.length) * 100)}%</span>
+        </div>
+        <div className="sm:hidden mt-2 h-1.5 w-full overflow-hidden rounded-full bg-sand-200">
+          <div className="h-full rounded-full bg-sage-600 transition-all duration-500" style={{ width: `${((step + 1) / STEP_NAMES.length) * 100}%` }} />
+        </div>
       </nav>
 
-      {/* ── Step 1 · About the home ─────────────────────────────── */}
       {step === 0 && (
-        <fieldset className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm">
-          <legend className="px-2 text-base font-semibold text-warm-900">1 · About your goal</legend>
-          <p className="mb-4 text-sm text-warm-700">{STEP_INTROS.goal}</p>
-          <div className="grid gap-4 sm:grid-cols-2">
+        <fieldset className="rounded-2xl border border-sand-200 bg-surface p-6 sm:p-8 shadow-sm animate-in fade-in duration-300">
+          <legend className="px-2 text-lg font-semibold text-warm-900">What are you looking to do?</legend>
+          <p className="mb-6 text-sm text-warm-700">{STEP_INTROS.goal}</p>
+          <div className="flex flex-col gap-6">
             <Field id="q-loan-purpose" label="What are you looking to do?">
-              <select id="q-loan-purpose" className={inputCls} value={loanPurpose} onChange={(e) => setLoanPurpose(e.target.value as LoanPurpose)}>
-                <option value={LoanPurpose.PURCHASE}>Buy a home</option>
-                <option value={LoanPurpose.REFI_RATE_TERM}>Refinance (rate/term)</option>
-                <option value={LoanPurpose.REFI_CASH_OUT}>Refinance (cash-out)</option>
-              </select>
+              <ChoiceGroup id="q-loan-purpose" value={loanPurpose} onChange={(v) => setLoanPurpose(v as any)} options={[{ value: LoanPurpose.PURCHASE, label: "Buy a home" }, { value: LoanPurpose.REFI_RATE_TERM, label: "Refinance (rate/term)" }, { value: LoanPurpose.REFI_CASH_OUT, label: "Refinance (cash-out)" }]} />
             </Field>
             <Field id="q-property-use" label="How will you use the home?">
-              <select id="q-property-use" className={inputCls} value={propertyUse} onChange={(e) => setPropertyUse(e.target.value as PropertyUse)}>
-                <option value={PropertyUse.PRIMARY}>Primary residence</option>
-                <option value={PropertyUse.SECOND_HOME}>Second home</option>
-                <option value={PropertyUse.INVESTMENT}>Investment property</option>
-              </select>
+              <ChoiceGroup id="q-property-use" value={propertyUse} onChange={(v) => setPropertyUse(v as any)} options={[{ value: PropertyUse.PRIMARY, label: "Primary residence" }, { value: PropertyUse.SECOND_HOME, label: "Second home" }, { value: PropertyUse.INVESTMENT, label: "Investment property" }]} />
             </Field>
-            <Field
-              id="q-residency"
-              label="What is your residency or immigration status?"
-              help="This determines which loan programs you can use — for example FHA is limited to citizens and permanent residents. Nothing is shared with anyone."
-            >
-              <select
-                id="q-residency"
-                className={inputCls}
-                value={residencyStatus}
-                onChange={(e) => setResidencyStatus(e.target.value as ResidencyStatus)}
-              >
-                <option value={ResidencyStatus.US_CITIZEN}>U.S. citizen</option>
-                <option value={ResidencyStatus.PERMANENT_RESIDENT}>Permanent resident (green card)</option>
-                <option value={ResidencyStatus.NON_PERMANENT_EAD}>Work visa / permit (H-1B, L-1, TN, DACA with work permit)</option>
-                <option value={ResidencyStatus.NON_PERMANENT_NO_EAD}>Visa without work authorization</option>
-                <option value={ResidencyStatus.ITIN}>I file taxes with an ITIN (no Social Security number)</option>
-                <option value={ResidencyStatus.FOREIGN_NATIONAL}>I live outside the U.S. (foreign national)</option>
-                <option value={ResidencyStatus.UNKNOWN}>Prefer not to say</option>
-              </select>
+            <Field id="q-residency" label="What is your residency or immigration status?" help="This determines which loan programs you can use — for example FHA is limited to citizens and permanent residents. Nothing is shared with anyone.">
+              <ChoiceGroup id="q-residency" value={residencyStatus} onChange={(v) => setResidencyStatus(v as any)} options={[{ value: ResidencyStatus.US_CITIZEN, label: "U.S. citizen" }, { value: ResidencyStatus.PERMANENT_RESIDENT, label: "Permanent resident (green card)" }, { value: ResidencyStatus.NON_PERMANENT_EAD, label: "Work visa / permit" }, { value: ResidencyStatus.NON_PERMANENT_NO_EAD, label: "Visa without work authorization" }, { value: ResidencyStatus.ITIN, label: "ITIN filer (no SSN)" }, { value: ResidencyStatus.FOREIGN_NATIONAL, label: "Foreign national" }, { value: ResidencyStatus.UNKNOWN, label: "Prefer not to say" }]} />
             </Field>
             {residencyStatus !== ResidencyStatus.US_CITIZEN && residencyStatus !== ResidencyStatus.UNKNOWN && (
-              <Field
-                id="q-veteran"
-                label="Have you served in the U.S. military? (veterans and surviving spouses)"
-                help="VA loans are earned through military service, regardless of citizenship status."
-              >
-                <select
-                  id="q-veteran"
-                  className={inputCls}
-                  value={isVeteran}
-                  onChange={(e) => setIsVeteran(e.target.value as "no" | "yes" | "unsure")}
-                >
-                  <option value="unsure">Prefer not to say</option>
-                  <option value="no">No</option>
-                  <option value="yes">Yes</option>
-                </select>
-              </Field>
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l-2 border-sage-200 pl-5 ml-1">
+                <Field id="q-veteran" label="Have you served in the U.S. military? (veterans and surviving spouses)" help="VA loans are earned through military service, regardless of citizenship status.">
+                  <ChoiceGroup id="q-veteran" value={isVeteran} onChange={(v) => setIsVeteran(v as any)} options={[{ value: "unsure", label: "Prefer not to say" }, { value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
+                </Field>
+              </div>
             )}
-            {(residencyStatus === ResidencyStatus.US_CITIZEN ||
-              residencyStatus === ResidencyStatus.PERMANENT_RESIDENT ||
-              residencyStatus === ResidencyStatus.NON_PERMANENT_EAD) && (
-              <Field
-                id="q-tribal"
-                label="Are you an enrolled member of a federally recognized tribe?"
-                help="Section 184 loans offer low down payments for tribal members, on or off tribal land."
-              >
-                <select
-                  id="q-tribal"
-                  className={inputCls}
-                  value={isTribalMember}
-                  onChange={(e) => setIsTribalMember(e.target.value as "no" | "yes" | "unsure")}
-                >
-                  <option value="unsure">Not sure</option>
-                  <option value="no">No</option>
-                  <option value="yes">Yes</option>
-                </select>
-              </Field>
+            {(residencyStatus === ResidencyStatus.US_CITIZEN || residencyStatus === ResidencyStatus.PERMANENT_RESIDENT || residencyStatus === ResidencyStatus.NON_PERMANENT_EAD) && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l-2 border-sage-200 pl-5 ml-1">
+                <Field id="q-tribal" label="Are you an enrolled member of a federally recognized tribe?" help="Section 184 loans offer low down payments for tribal members, on or off tribal land.">
+                  <ChoiceGroup id="q-tribal" value={isTribalMember} onChange={(v) => setIsTribalMember(v as any)} options={[{ value: "unsure", label: "Not sure" }, { value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
+                </Field>
+              </div>
             )}
-            <Field
-              id="q-medical"
-              label="Are you a licensed medical professional (MD, DO, DDS, CRNA, PA, PharmD)?"
-              help="Doctor loans offer little or no down payment before your income fully ramps up."
-            >
-              <select
-                id="q-medical"
-                className={inputCls}
-                value={isMedicalProfessional}
-                onChange={(e) => setIsMedicalProfessional(e.target.value as "no" | "yes")}
-              >
-                <option value="no">No</option>
-                <option value="yes">Yes</option>
-              </select>
+            <Field id="q-medical" label="Are you a licensed medical professional (MD, DO, DDS, CRNA, PA, PharmD)?" help="Doctor loans offer little or no down payment before your income fully ramps up.">
+              <ChoiceGroup id="q-medical" value={isMedicalProfessional} onChange={(v) => setIsMedicalProfessional(v as any)} options={[{ value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
             </Field>
-            <Field
-              id="q-ami"
-              label="Is your total household income at or below the area average for your county?"
-              help="Some 3%-down programs (HomeReady, Home Possible) are reserved for moderate incomes. Not sure is fine — the loan officer can confirm."
-            >
-              <select
-                id="q-ami"
-                className={inputCls}
-                value={incomeAtOrBelow80Ami}
-                onChange={(e) => setIncomeAtOrBelow80Ami(e.target.value as "unsure" | "yes" | "no")}
-              >
-                <option value="unsure">Not sure</option>
-                <option value="yes">Yes, at or below the area average</option>
-                <option value="no">No, above it</option>
-              </select>
+            <Field id="q-ami" label="Is your total household income at or below the area average for your county?" help="Some 3%-down programs are reserved for moderate incomes. Not sure is fine — the loan officer can confirm.">
+              <ChoiceGroup id="q-ami" value={incomeAtOrBelow80Ami} onChange={(v) => setIncomeAtOrBelow80Ami(v as any)} options={[{ value: "unsure", label: "Not sure" }, { value: "yes", label: "Yes, at or below" }, { value: "no", label: "No, above it" }]} />
             </Field>
-            <Field id="q-loan-type" label="Loan type you're considering" help="Choose &ldquo;Not sure&rdquo; and we'll suggest options.">
-              <select id="q-loan-type" className={inputCls} value={loanType} onChange={(e) => setLoanType(e.target.value as LoanType)}>
-                <option value={LoanType.UNKNOWN}>Not sure yet</option>
-                <option value={LoanType.CONVENTIONAL_CONF}>Conventional</option>
-                <option value={LoanType.FHA}>FHA</option>
-                <option value={LoanType.VA}>VA</option>
-                <option value={LoanType.USDA}>USDA</option>
-              </select>
+            <Field id="q-loan-type" label="Loan type you're considering" help="Choose “Not sure” and we'll suggest options.">
+              <ChoiceGroup id="q-loan-type" value={loanType} onChange={(v) => setLoanType(v as any)} options={[{ value: LoanType.UNKNOWN, label: "Not sure yet" }, { value: LoanType.CONVENTIONAL_CONF, label: "Conventional" }, { value: LoanType.FHA, label: "FHA" }, { value: LoanType.VA, label: "VA" }, { value: LoanType.USDA, label: "USDA" }]} />
             </Field>
             <Field id="q-property-type" label="Property type">
-              <select id="q-property-type" className={inputCls} value={propertyType} onChange={(e) => setPropertyType(e.target.value as PropertyType)}>
-                <option value={PropertyType.SFR}>Single-family home</option>
-                <option value={PropertyType.TOWNHOME}>Townhome</option>
-                <option value={PropertyType.CONDO_WARRANTABLE}>Condo</option>
-                <option value={PropertyType.MULTI_2_4}>Multi-family (2–4 units)</option>
-                <option value={PropertyType.MANUFACTURED}>Manufactured</option>
-              </select>
+              <ChoiceGroup id="q-property-type" value={propertyType} onChange={(v) => setPropertyType(v as any)} options={[{ value: PropertyType.SFR, label: "Single-family home" }, { value: PropertyType.TOWNHOME, label: "Townhome" }, { value: PropertyType.CONDO_WARRANTABLE, label: "Condo" }, { value: PropertyType.MULTI_2_4, label: "Multi-family (2–4 units)" }, { value: PropertyType.MANUFACTURED, label: "Manufactured" }]} />
             </Field>
             <Field id="q-price" label="Target purchase price (optional)" help="Leave blank and we'll estimate a range.">
-              <input
-                id="q-price"
-                className={inputCls}
-                inputMode="numeric"
-                maxLength={12}
-                placeholder="e.g. 350000"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-              />
+              <input id="q-price" className={inputCls} inputMode="numeric" maxLength={12} placeholder="e.g. 350000" value={price} onChange={(e) => setPrice(e.target.value)} />
             </Field>
           </div>
         </fieldset>
       )}
 
-      {/* ── Step 2 · Income ─────────────────────────────────────── */}
       {step === 1 && (
-        <fieldset className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm">
-          <legend className="px-2 text-base font-semibold text-warm-900">2 · Income</legend>
-          <p className="mb-4 text-sm text-warm-700">{STEP_INTROS.income}</p>
-          <div className="grid gap-4 sm:grid-cols-2">
+        <fieldset className="rounded-2xl border border-sand-200 bg-surface p-6 sm:p-8 shadow-sm animate-in fade-in duration-300">
+          <legend className="px-2 text-lg font-semibold text-warm-900">Your background</legend>
+          <p className="mb-6 text-sm text-warm-700">A bit about you — helps us match you to the right programs.</p>
+          <div className="flex flex-col gap-6">
+            <Field id="q-years-employed" label="Years in your field / self-employment">
+              <input id="q-years-employed" className={inputCls} inputMode="numeric" maxLength={3} value={yearsEmployed} onChange={(e) => setYearsEmployed(e.target.value)} />
+            </Field>
+            <Field id="q-months-job" label="Months in your current job (optional)">
+              <input id="q-months-job" className={inputCls} inputMode="numeric" maxLength={3} placeholder="e.g. 14" value={monthsCurrentJob} onChange={(e) => setMonthsCurrentJob(e.target.value)} />
+            </Field>
+            <Field id="q-probationary" label="Are you still in a probationary or introductory period at work?" help="Many lenders wait until it ends — or look for a strong history in the same field — before counting the income.">
+              <ChoiceGroup id="q-probationary" value={isProbationary} onChange={(v) => setIsProbationary(v as any)} options={[{ value: "unsure", label: "Not sure" }, { value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
+            </Field>
+          </div>
+        </fieldset>
+      )}
+
+      {step === 2 && (
+        <fieldset className="rounded-2xl border border-sand-200 bg-surface p-6 sm:p-8 shadow-sm animate-in fade-in duration-300">
+          <legend className="px-2 text-lg font-semibold text-warm-900">Your income</legend>
+          <p className="mb-6 text-sm text-warm-700">{STEP_INTROS.income}</p>
+          <div className="flex flex-col gap-6">
             <Field id="q-income" label="Gross monthly income (before taxes)" error={errors.income}>
-              <input
-                id="q-income"
-                className={inputCls}
-                inputMode="numeric"
-                maxLength={12}
-                placeholder="e.g. 6000"
-                value={income}
-                aria-invalid={errors.income ? true : undefined}
-                aria-describedby={errors.income ? "q-income-error" : undefined}
-                onChange={(e) => setIncome(e.target.value)}
-                required
-              />
+              <input id="q-income" className={inputCls} inputMode="numeric" maxLength={12} placeholder="e.g. 6000" value={income} aria-invalid={errors.income ? true : undefined} aria-describedby={errors.income ? "q-income-error" : undefined} onChange={(e) => setIncome(e.target.value)} required />
             </Field>
             <Field id="q-income-type" label="Income type">
-              <select id="q-income-type" className={inputCls} value={incomeType} onChange={(e) => setIncomeType(e.target.value as IncomeType)}>
-                <option value={IncomeType.W2}>W-2 employee</option>
-                <option value={IncomeType.SELF_EMPLOYED}>Self-employed / business owner</option>
-                <option value={IncomeType.COMMISSION}>Commission-based</option>
-                <option value={IncomeType.VARIABLE_HOURLY}>Variable / hourly</option>
-                <option value={IncomeType.RETIRED_FIXED}>Retirement income</option>
-                <option value={IncomeType.SOCIAL_SECURITY}>Social Security</option>
-              </select>
+              <ChoiceGroup id="q-income-type" value={incomeType} onChange={(v) => setIncomeType(v as any)} options={[{ value: IncomeType.W2, label: "W-2 employee" }, { value: IncomeType.SELF_EMPLOYED, label: "Self-employed" }, { value: IncomeType.COMMISSION, label: "Commission-based" }, { value: IncomeType.VARIABLE_HOURLY, label: "Variable / hourly" }, { value: IncomeType.RETIRED_FIXED, label: "Retirement income" }, { value: IncomeType.SOCIAL_SECURITY, label: "Social Security" }]} />
             </Field>
-            <Field
-              id="q-income-doc"
-              label="How is your income documented?"
-              help="Lenders accept many documentation types — not just tax returns."
-            >
-              <select id="q-income-doc" className={inputCls} value={incomeDoc} onChange={(e) => setIncomeDoc(e.target.value as IncomeDocumentation)}>
-                <option value={IncomeDocumentation.UNKNOWN}>Not sure</option>
-                <option value={IncomeDocumentation.W2_STUBS}>W-2 paystubs</option>
-                <option value={IncomeDocumentation.W2_OFFER_LETTER}>Job offer letter (haven&apos;t started yet)</option>
-                <option value={IncomeDocumentation.FULL_TAX_2YR}>Two years of tax returns</option>
-                <option value={IncomeDocumentation.FULL_TAX_1YR}>One year of tax returns</option>
-                <option value={IncomeDocumentation.BANK_STATEMENT_24}>Bank statements (24 months)</option>
-                <option value={IncomeDocumentation.BANK_STATEMENT_12}>Bank statements (12 months)</option>
-                <option value={IncomeDocumentation.PANDL_CPA}>Profit &amp; loss statement (CPA-signed)</option>
-                <option value={IncomeDocumentation.PANDL_PREPARED}>Profit &amp; loss statement (self-prepared)</option>
-                <option value={IncomeDocumentation.ONE_O_NINE_NINE}>1099 forms</option>
-                <option value={IncomeDocumentation.WVOE_ONLY}>Employer verification letter only</option>
-                <option value={IncomeDocumentation.ASSET_DEPLETION}>Assets (savings / investments)</option>
-                <option value={IncomeDocumentation.CASH_UNDOCUMENTED}>Cash / not fully documented</option>
-                <option value={IncomeDocumentation.NO_DOC}>No documentation</option>
-              </select>
+            <Field id="q-income-doc" label="How is your income documented?" help="Lenders accept many documentation types — not just tax returns.">
+              <ChoiceGroup id="q-income-doc" value={incomeDoc} onChange={(v) => setIncomeDoc(v as any)} options={[{ value: IncomeDocumentation.UNKNOWN, label: "Not sure" }, { value: IncomeDocumentation.W2_STUBS, label: "W-2 paystubs" }, { value: IncomeDocumentation.W2_OFFER_LETTER, label: "Job offer letter" }, { value: IncomeDocumentation.FULL_TAX_2YR, label: "Two years of tax returns" }, { value: IncomeDocumentation.FULL_TAX_1YR, label: "One year of tax returns" }, { value: IncomeDocumentation.BANK_STATEMENT_24, label: "Bank statements (24 mo)" }, { value: IncomeDocumentation.BANK_STATEMENT_12, label: "Bank statements (12 mo)" }, { value: IncomeDocumentation.PANDL_CPA, label: "P&L (CPA-signed)" }, { value: IncomeDocumentation.PANDL_PREPARED, label: "P&L (self-prepared)" }, { value: IncomeDocumentation.ONE_O_NINE_NINE, label: "1099 forms" }, { value: IncomeDocumentation.WVOE_ONLY, label: "Employer verification only" }, { value: IncomeDocumentation.ASSET_DEPLETION, label: "Assets" }, { value: IncomeDocumentation.CASH_UNDOCUMENTED, label: "Cash / not documented" }, { value: IncomeDocumentation.NO_DOC, label: "No documentation" }]} />
             </Field>
-            <Field
-              id="q-cash-income"
-              label="Is any of your income paid in cash that doesn't show on tax returns?"
-              help="Many programs work with cash-heavy income — this just helps us point you to the right ones."
-            >
-              <select id="q-cash-income" className={inputCls} value={hasCashIncome} onChange={(e) => setHasCashIncome(e.target.value as "yes" | "no" | "unsure")}>
-                <option value="unsure">Not sure</option>
-                <option value="yes">Yes, some of it</option>
-                <option value="no">No, it&apos;s all documented</option>
-              </select>
+            <Field id="q-cash-income" label="Is any of your income paid in cash that doesn't show on tax returns?" help="Many programs work with cash-heavy income — this just helps us point you to the right ones.">
+              <ChoiceGroup id="q-cash-income" value={hasCashIncome} onChange={(v) => setHasCashIncome(v as any)} options={[{ value: "unsure", label: "Not sure" }, { value: "yes", label: "Yes, some of it" }, { value: "no", label: "No, it's all documented" }]} />
             </Field>
             {hasCashIncome === "yes" && (
-              <Field id="q-cash-portion" label="Roughly what share is cash? (optional)" error={errors.cashPortion}>
-                <input
-                  id="q-cash-portion"
-                  className={inputCls}
-                  inputMode="numeric"
-                  maxLength={3}
-                  placeholder="e.g. 30 (for 30%)"
-                  value={cashPortion}
-                  aria-invalid={errors.cashPortion ? true : undefined}
-                  aria-describedby={errors.cashPortion ? "q-cash-portion-error" : undefined}
-                  onChange={(e) => setCashPortion(e.target.value)}
-                />
-              </Field>
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l-2 border-sage-200 pl-5 ml-1">
+                <Field id="q-cash-portion" label="Roughly what share is cash? (optional)" error={errors.cashPortion}>
+                  <input id="q-cash-portion" className={inputCls} inputMode="numeric" maxLength={3} placeholder="e.g. 30 (for 30%)" value={cashPortion} aria-invalid={errors.cashPortion ? true : undefined} aria-describedby={errors.cashPortion ? "q-cash-portion-error" : undefined} onChange={(e) => setCashPortion(e.target.value)} />
+                </Field>
+              </div>
             )}
-            <Field id="q-years-employed" label="Years in your field / self-employment">
-              <input
-                id="q-years-employed"
-                className={inputCls}
-                inputMode="numeric"
-                maxLength={3}
-                value={yearsEmployed}
-                onChange={(e) => setYearsEmployed(e.target.value)}
-              />
+            <Field id="q-income-trend" label="Over the last two years, has your income gone up, stayed about the same, or gone down?" help="Lenders qualify declining income at the recent lower level, not the average — this keeps your estimate honest.">
+              <ChoiceGroup id="q-income-trend" value={incomeTrend} onChange={(v) => setIncomeTrend(v as any)} options={[{ value: "unknown", label: "Not sure" }, { value: "up", label: "Gone up" }, { value: "flat", label: "About the same" }, { value: "down", label: "Gone down" }]} />
             </Field>
-            {/* Stress-test P2: current-job tenure + probationary status */}
-            <Field id="q-months-job" label="Months in your current job (optional)">
-              <input
-                id="q-months-job"
-                className={inputCls}
-                inputMode="numeric"
-                maxLength={3}
-                placeholder="e.g. 14"
-                value={monthsCurrentJob}
-                onChange={(e) => setMonthsCurrentJob(e.target.value)}
-              />
-            </Field>
-            <Field
-              id="q-probationary"
-              label="Are you still in a probationary or introductory period at work?"
-              help="Many lenders wait until it ends — or look for a strong history in the same field — before counting the income."
-            >
-              <select
-                id="q-probationary"
-                className={inputCls}
-                value={isProbationary}
-                onChange={(e) => setIsProbationary(e.target.value as "no" | "yes" | "unsure")}
-              >
-                <option value="unsure">Not sure</option>
-                <option value="no">No</option>
-                <option value="yes">Yes</option>
-              </select>
-            </Field>
-            {/* Stress-test P1: income trend — declining income is underwritten at the recent level */}
-            <Field
-              id="q-income-trend"
-              label="Over the last two years, has your income gone up, stayed about the same, or gone down?"
-              help="Lenders qualify declining income at the recent lower level, not the average — this keeps your estimate honest."
-            >
-              <select
-                id="q-income-trend"
-                className={inputCls}
-                value={incomeTrend}
-                onChange={(e) => setIncomeTrend(e.target.value as "unknown" | "up" | "flat" | "down")}
-              >
-                <option value="unknown">Not sure</option>
-                <option value="up">Gone up</option>
-                <option value="flat">About the same</option>
-                <option value="down">Gone down</option>
-              </select>
-            </Field>
-            {/* Stress-test P1: side-business loss offsets W-2 income on tax returns */}
             <Field id="q-side-business" label="Do you have a side business or self-employment income in addition to your main job?">
-              <select
-                id="q-side-business"
-                className={inputCls}
-                value={hasSideBusiness}
-                onChange={(e) => setHasSideBusiness(e.target.value as "no" | "yes")}
-              >
-                <option value="no">No</option>
-                <option value="yes">Yes</option>
-              </select>
+              <ChoiceGroup id="q-side-business" value={hasSideBusiness} onChange={(v) => setHasSideBusiness(v as any)} options={[{ value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
             </Field>
             {hasSideBusiness === "yes" && (
-              <Field
-                id="q-side-business-net"
-                label="What does that business net per month after expenses, per your tax returns?"
-                help="Enter a negative number for a loss — for example -700. A loss on tax returns reduces qualifying income."
-                error={errors.sideBusinessNet}
-              >
-                <input
-                  id="q-side-business-net"
-                  className={inputCls}
-                  inputMode="numeric"
-                  maxLength={10}
-                  placeholder="e.g. 500 or -700 for a loss"
-                  value={sideBusinessNet}
-                  aria-invalid={errors.sideBusinessNet ? true : undefined}
-                  aria-describedby={errors.sideBusinessNet ? "q-side-business-net-error" : undefined}
-                  onChange={(e) => setSideBusinessNet(e.target.value)}
-                />
-              </Field>
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l-2 border-sage-200 pl-5 ml-1">
+                <Field id="q-side-business-net" label="What does that business net per month after expenses, per your tax returns?" help="Enter a negative number for a loss — for example -700. A loss on tax returns reduces qualifying income." error={errors.sideBusinessNet}>
+                  <input id="q-side-business-net" className={inputCls} inputMode="numeric" maxLength={10} placeholder="e.g. 500 or -700 for a loss" value={sideBusinessNet} aria-invalid={errors.sideBusinessNet ? true : undefined} aria-describedby={errors.sideBusinessNet ? "q-side-business-net-error" : undefined} onChange={(e) => setSideBusinessNet(e.target.value)} />
+                </Field>
+              </div>
             )}
           </div>
         </fieldset>
       )}
 
-      {/* ── Step 3 · Credit ─────────────────────────────────────── */}
-      {step === 2 && (
-        <fieldset className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm">
-          <legend className="px-2 text-base font-semibold text-warm-900">3 · Credit</legend>
-          <p className="mb-4 text-sm text-warm-700">A rough range is enough — we never pull your credit.</p>
-          <div className="grid gap-4 sm:grid-cols-2">
+      {step === 3 && (
+        <fieldset className="rounded-2xl border border-sand-200 bg-surface p-6 sm:p-8 shadow-sm animate-in fade-in duration-300">
+          <legend className="px-2 text-lg font-semibold text-warm-900">Anyone applying with you?</legend>
+          <p className="mb-6 text-sm text-warm-700">Adding a co-borrower can help with income and programs. If not, just move on.</p>
+          <div className="flex flex-col gap-6">
+            <Field id="q-co-borrower" label="Applying with someone else?">
+              <ChoiceGroup id="q-co-borrower" value={hasCoBorrower} onChange={(v) => setHasCoBorrower(v as any)} options={[{ value: "no", label: "No, just me" }, { value: "yes", label: "Yes, with a co-borrower" }]} />
+            </Field>
+            {hasCoBorrower === "yes" && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l-2 border-sage-200 pl-5 ml-1 flex flex-col gap-6">
+                <Field id="q-co-income" label="Their gross monthly income (before taxes)">
+                  <input id="q-co-income" className={inputCls} inputMode="numeric" maxLength={12} placeholder="e.g. 4500" value={coBorrowerIncome} onChange={(e) => setCoBorrowerIncome(e.target.value)} />
+                </Field>
+                <Field id="q-co-credit" label="Their credit range" help="Lenders usually price a joint application on the lower of the two credit scores.">
+                  <ChoiceGroup id="q-co-credit" value={coBorrowerCreditTier} onChange={(v) => setCoBorrowerCreditTier(v as any)} options={[{ value: CreditTier.EXCELLENT, label: "Excellent (760+)" }, { value: CreditTier.GOOD, label: "Good (700–759)" }, { value: CreditTier.FAIR, label: "Fair (640–699)" }, { value: CreditTier.POOR, label: "Below 640" }, { value: CreditTier.UNKNOWN, label: "Not sure" }]} />
+                </Field>
+              </div>
+            )}
+          </div>
+        </fieldset>
+      )}
+
+      {step === 4 && (
+        <fieldset className="rounded-2xl border border-sand-200 bg-surface p-6 sm:p-8 shadow-sm animate-in fade-in duration-300">
+          <legend className="px-2 text-lg font-semibold text-warm-900">Your credit</legend>
+          <p className="mb-6 text-sm text-warm-700">A rough range is enough — we never pull your credit.</p>
+          <div className="flex flex-col gap-6">
             <Field id="q-knows-score" label="Do you know your credit score?" help="We never pull your credit. This is self-reported and educational.">
-              <select id="q-knows-score" className={inputCls} value={knowsScore} onChange={(e) => setKnowsScore(e.target.value as "yes" | "no")}>
-                <option value="no">No, I&apos;ll pick a range</option>
-                <option value="yes">Yes, I know my score</option>
-              </select>
+              <ChoiceGroup id="q-knows-score" value={knowsScore} onChange={(v) => setKnowsScore(v as any)} options={[{ value: "no", label: "No, I'll pick a range" }, { value: "yes", label: "Yes, I know my score" }]} />
             </Field>
             {knowsScore === "yes" ? (
               <Field id="q-credit-score" label="Your credit score (300–850)" error={errors.creditScore}>
-                <input
-                  id="q-credit-score"
-                  className={inputCls}
-                  inputMode="numeric"
-                  maxLength={3}
-                  placeholder="e.g. 700"
-                  value={creditScore}
-                  aria-invalid={errors.creditScore ? true : undefined}
-                  aria-describedby={errors.creditScore ? "q-credit-score-error" : undefined}
-                  onChange={(e) => setCreditScore(e.target.value)}
-                />
+                <input id="q-credit-score" className={inputCls} inputMode="numeric" maxLength={3} placeholder="e.g. 700" value={creditScore} aria-invalid={errors.creditScore ? true : undefined} aria-describedby={errors.creditScore ? "q-credit-score-error" : undefined} onChange={(e) => setCreditScore(e.target.value)} />
               </Field>
             ) : (
               <Field id="q-credit-tier" label="Which range is closest?">
-                <select id="q-credit-tier" className={inputCls} value={creditTier} onChange={(e) => setCreditTier(e.target.value as CreditTier)}>
-                  <option value={CreditTier.EXCELLENT}>Excellent (760+)</option>
-                  <option value={CreditTier.GOOD}>Good (700–759)</option>
-                  <option value={CreditTier.FAIR}>Fair (640–699)</option>
-                  <option value={CreditTier.POOR}>Below 640</option>
-                </select>
+                <ChoiceGroup id="q-credit-tier" value={creditTier} onChange={(v) => setCreditTier(v as any)} options={[{ value: CreditTier.EXCELLENT, label: "Excellent (760+)" }, { value: CreditTier.GOOD, label: "Good (700–759)" }, { value: CreditTier.FAIR, label: "Fair (640–699)" }, { value: CreditTier.POOR, label: "Below 640" }]} />
               </Field>
             )}
-            {/* P3: the credit-event question — seasoning changes everything */}
-            <Field
-              id="q-credit-event"
-              label="Any major credit events in the last 10 years?"
-              help="For example a bankruptcy, foreclosure, short sale, or loan modification. Lender waiting periods differ by event — answering honestly makes your snapshot more accurate."
-            >
-              <select
-                id="q-credit-event"
-                className={inputCls}
-                value={creditEvent}
-                onChange={(e) => setCreditEvent(e.target.value as CreditEvent)}
-              >
-                <option value={CreditEvent.NONE}>No — none of these</option>
-                <option value={CreditEvent.BK_CH7}>Chapter 7 bankruptcy</option>
-                <option value={CreditEvent.BK_CH13}>Chapter 13 bankruptcy</option>
-                <option value={CreditEvent.FORECLOSURE}>Foreclosure</option>
-                <option value={CreditEvent.SHORT_SALE}>Short sale</option>
-                <option value={CreditEvent.DEEDS_IN_LIEU}>Deed-in-lieu of foreclosure</option>
-                <option value={CreditEvent.MODIFICATION}>Loan modification</option>
-              </select>
+            <Field id="q-credit-event" label="Any major credit events in the last 10 years?" help="For example a bankruptcy, foreclosure, short sale, or loan modification. Lender waiting periods differ by event — answering honestly makes your snapshot more accurate.">
+              <ChoiceGroup id="q-credit-event" value={creditEvent} onChange={(v) => setCreditEvent(v as any)} options={[{ value: CreditEvent.NONE, label: "No — none of these" }, { value: CreditEvent.BK_CH7, label: "Chapter 7 bankruptcy" }, { value: CreditEvent.BK_CH13, label: "Chapter 13 bankruptcy" }, { value: CreditEvent.FORECLOSURE, label: "Foreclosure" }, { value: CreditEvent.SHORT_SALE, label: "Short sale" }, { value: CreditEvent.DEEDS_IN_LIEU, label: "Deed-in-lieu of foreclosure" }, { value: CreditEvent.MODIFICATION, label: "Loan modification" }]} />
             </Field>
             {creditEvent !== CreditEvent.NONE && (
-              <Field
-                id="q-credit-event-years"
-                label="About how long ago was it? (years)"
-                help="Half-years are fine — for example, 1.5."
-                error={errors.yearsSinceCreditEvent}
-              >
-                <input
-                  id="q-credit-event-years"
-                  className={inputCls}
-                  inputMode="decimal"
-                  maxLength={5}
-                  placeholder="e.g. 1.5"
-                  value={yearsSinceCreditEvent}
-                  aria-invalid={errors.yearsSinceCreditEvent ? true : undefined}
-                  aria-describedby={errors.yearsSinceCreditEvent ? "q-credit-event-years-error" : undefined}
-                  onChange={(e) => setYearsSinceCreditEvent(e.target.value)}
-                />
-              </Field>
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l-2 border-sage-200 pl-5 ml-1">
+                <Field id="q-credit-event-years" label="About how long ago was it? (years)" help="Half-years are fine — for example, 1.5." error={errors.yearsSinceCreditEvent}>
+                  <input id="q-credit-event-years" className={inputCls} inputMode="decimal" maxLength={5} placeholder="e.g. 1.5" value={yearsSinceCreditEvent} aria-invalid={errors.yearsSinceCreditEvent ? true : undefined} aria-describedby={errors.yearsSinceCreditEvent ? "q-credit-event-years-error" : undefined} onChange={(e) => setYearsSinceCreditEvent(e.target.value)} />
+                </Field>
+              </div>
             )}
-            {/* Stress-test P2: documented housing history — the strongest
-                non-FICO signal, especially for thin files */}
-            <Field
-              id="q-rent-history"
-              label="Have you made 12+ months of on-time rent or housing payments you can document?"
-              help="Bank or app statements showing on-time payments count. Lenders view this as a strong sign, especially with a shorter credit history."
-            >
-              <select
-                id="q-rent-history"
-                className={inputCls}
-                value={hasRentHistory}
-                onChange={(e) => setHasRentHistory(e.target.value as "unsure" | "yes" | "no")}
-              >
-                <option value="unsure">Not sure</option>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-              </select>
+            <Field id="q-rent-history" label="Have you made 12+ months of on-time rent or housing payments you can document?" help="Bank or app statements showing on-time payments count. Lenders view this as a strong sign, especially with a shorter credit history.">
+              <ChoiceGroup id="q-rent-history" value={hasRentHistory} onChange={(v) => setHasRentHistory(v as any)} options={[{ value: "unsure", label: "Not sure" }, { value: "yes", label: "Yes" }, { value: "no", label: "No" }]} />
             </Field>
           </div>
         </fieldset>
       )}
 
-      {/* ── Step 4 · Money ──────────────────────────────────────── */}
-      {step === 3 && (
-        <fieldset className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm">
-          <legend className="px-2 text-base font-semibold text-warm-900">4 · Debts &amp; savings</legend>
-          <p className="mb-4 text-sm text-warm-700">{STEP_INTROS.money}</p>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Field id="q-debt" label="Total monthly debt payments" help="Cars, cards, student loans, etc. Not rent.">
-              <input
-                id="q-debt"
-                className={inputCls}
-                inputMode="numeric"
-                maxLength={9}
-                placeholder="e.g. 500"
-                value={debt}
-                onChange={(e) => setDebt(e.target.value)}
-              />
-            </Field>
-            {/* Stress-test P1: itemized debts — each has a program rule the total can't express */}
-            <Field
-              id="q-student-loan"
-              label="Do you have student loans?"
-              help="Deferred or income-driven loans are counted differently than standard repayment."
-            >
-              <select
-                id="q-student-loan"
-                className={inputCls}
-                value={hasStudentLoan}
-                onChange={(e) => setHasStudentLoan(e.target.value as "no" | "yes")}
-              >
-                <option value="no">No</option>
-                <option value="yes">Yes</option>
-              </select>
-            </Field>
-            {hasStudentLoan === "yes" && (
-              <>
-                <Field id="q-student-status" label="How are they being paid right now?">
-                  <select
-                    id="q-student-status"
-                    className={inputCls}
-                    value={studentLoanStatus}
-                    onChange={(e) => setStudentLoanStatus(e.target.value as "repayment" | "deferred")}
-                  >
-                    <option value="repayment">Standard / income-driven repayment</option>
-                    <option value="deferred">Deferred or forbearance (not paying yet)</option>
-                  </select>
-                </Field>
-                <Field id="q-student-balance" label="Total student loan balance" error={errors.studentLoanBalance}>
-                  <input
-                    id="q-student-balance"
-                    className={inputCls}
-                    inputMode="numeric"
-                    maxLength={10}
-                    placeholder="e.g. 35000"
-                    value={studentLoanBalance}
-                    aria-invalid={errors.studentLoanBalance ? true : undefined}
-                    aria-describedby={errors.studentLoanBalance ? "q-student-balance-error" : undefined}
-                    onChange={(e) => setStudentLoanBalance(e.target.value)}
-                  />
-                </Field>
-                <Field
-                  id="q-student-payment"
-                  label="Monthly student loan payment (0 if not paying yet)"
-                  help="If deferred, lenders typically count about 1% of the balance — we'll use that rule."
-                >
-                  <input
-                    id="q-student-payment"
-                    className={inputCls}
-                    inputMode="numeric"
-                    maxLength={7}
-                    placeholder="e.g. 280"
-                    value={studentLoanPayment}
-                    onChange={(e) => setStudentLoanPayment(e.target.value)}
-                  />
-                </Field>
-              </>
-            )}
-            <Field id="q-support" label="Do you pay alimony or child support?">
-              <select
-                id="q-support"
-                className={inputCls}
-                value={hasSupportPayments}
-                onChange={(e) => setHasSupportPayments(e.target.value as "no" | "yes")}
-              >
-                <option value="no">No</option>
-                <option value="yes">Yes</option>
-              </select>
-            </Field>
-            {hasSupportPayments === "yes" && (
-              <>
-                <Field id="q-support-type" label="Which do you pay?">
-                  <select
-                    id="q-support-type"
-                    className={inputCls}
-                    value={supportType}
-                    onChange={(e) => setSupportType(e.target.value as "alimony_paid" | "child_support_paid")}
-                  >
-                    <option value="alimony_paid">Alimony (spousal support)</option>
-                    <option value="child_support_paid">Child support</option>
-                  </select>
-                </Field>
-                <Field id="q-support-amount" label="Monthly amount you pay" error={errors.supportAmount}>
-                  <input
-                    id="q-support-amount"
-                    className={inputCls}
-                    inputMode="numeric"
-                    maxLength={7}
-                    placeholder="e.g. 800"
-                    value={supportAmount}
-                    aria-invalid={errors.supportAmount ? true : undefined}
-                    aria-describedby={errors.supportAmount ? "q-support-amount-error" : undefined}
-                    onChange={(e) => setSupportAmount(e.target.value)}
-                  />
-                </Field>
-                <Field
-                  id="q-support-months"
-                  label="How many months until it ends? (optional)"
-                  help="Support ending within 10 months is typically left out of the qualifying math — leave blank if there's no end date."
-                >
-                  <input
-                    id="q-support-months"
-                    className={inputCls}
-                    inputMode="numeric"
-                    maxLength={4}
-                    placeholder="e.g. 8"
-                    value={supportMonthsLeft}
-                    onChange={(e) => setSupportMonthsLeft(e.target.value)}
-                  />
-                </Field>
-              </>
-            )}
-            <Field id="q-cosigned" label="Is anyone else's debt on your credit because you cosigned for them?">
-              <select
-                id="q-cosigned"
-                className={inputCls}
-                value={hasCosignedDebt}
-                onChange={(e) => setHasCosignedDebt(e.target.value as "no" | "yes")}
-              >
-                <option value="no">No</option>
-                <option value="yes">Yes</option>
-              </select>
-            </Field>
-            {hasCosignedDebt === "yes" && (
-              <>
-                <Field id="q-cosigned-payment" label="Monthly payment on that debt" error={errors.cosignedPayment}>
-                  <input
-                    id="q-cosigned-payment"
-                    className={inputCls}
-                    inputMode="numeric"
-                    maxLength={7}
-                    placeholder="e.g. 420"
-                    value={cosignedPayment}
-                    aria-invalid={errors.cosignedPayment ? true : undefined}
-                    aria-describedby={errors.cosignedPayment ? "q-cosigned-payment-error" : undefined}
-                    onChange={(e) => setCosignedPayment(e.target.value)}
-                  />
-                </Field>
-                <Field
-                  id="q-cosigned-ontime"
-                  label="Has the other person paid it on time for the last 12 months?"
-                  help="If yes and you can document it, lenders typically leave it out of your qualifying math."
-                >
-                  <select
-                    id="q-cosigned-ontime"
-                    className={inputCls}
-                    value={cosignedOnTime12mo}
-                    onChange={(e) => setCosignedOnTime12mo(e.target.value as "no" | "yes")}
-                  >
-                    <option value="no">No / not sure</option>
-                    <option value="yes">Yes</option>
-                  </select>
-                </Field>
-              </>
-            )}
-            <Field
-              id="q-revolving-balance"
-              label="Total balance on your credit cards (optional)"
-              help="Card balances count at least 1-5% of the balance monthly — this refines your debt estimate."
-            >
-              <input
-                id="q-revolving-balance"
-                className={inputCls}
-                inputMode="numeric"
-                maxLength={9}
-                placeholder="e.g. 8000"
-                value={revolvingBalance}
-                onChange={(e) => setRevolvingBalance(e.target.value)}
-              />
-            </Field>
-            {revolvingBalance.trim() !== "" && (
-              <Field
-                id="q-revolving-limit"
-                label="Total credit limit across those cards (optional)"
-                help="Balances near the limits can hold the score down even with perfect payment history — paying below 30% of the limits helps fastest."
-                error={errors.revolvingLimit}
-              >
-                <input
-                  id="q-revolving-limit"
-                  className={inputCls}
-                  inputMode="numeric"
-                  maxLength={9}
-                  placeholder="e.g. 20000"
-                  value={revolvingLimit}
-                  aria-invalid={errors.revolvingLimit ? true : undefined}
-                  aria-describedby={errors.revolvingLimit ? "q-revolving-limit-error" : undefined}
-                  onChange={(e) => setRevolvingLimit(e.target.value)}
-                />
-              </Field>
-            )}
+      {step === 5 && (
+        <fieldset className="rounded-2xl border border-sand-200 bg-surface p-6 sm:p-8 shadow-sm animate-in fade-in duration-300">
+          <legend className="px-2 text-lg font-semibold text-warm-900">Your savings &amp; assets</legend>
+          <p className="mb-6 text-sm text-warm-700">{STEP_INTROS.money}</p>
+          <div className="flex flex-col gap-6">
             <Field id="q-down-payment" label="Down payment you have saved">
-              <input
-                id="q-down-payment"
-                className={inputCls}
-                inputMode="numeric"
-                maxLength={12}
-                placeholder="e.g. 20000"
-                value={downPayment}
-                onChange={(e) => setDownPayment(e.target.value)}
-              />
+              <input id="q-down-payment" className={inputCls} inputMode="numeric" maxLength={12} placeholder="e.g. 20000" value={downPayment} onChange={(e) => setDownPayment(e.target.value)} />
             </Field>
             <Field id="q-liquid" label="Savings left after closing (optional)">
-              <input
-                id="q-liquid"
-                className={inputCls}
-                inputMode="numeric"
-                maxLength={12}
-                placeholder="e.g. 10000"
-                value={liquid}
-                onChange={(e) => setLiquid(e.target.value)}
-              />
+              <input id="q-liquid" className={inputCls} inputMode="numeric" maxLength={12} placeholder="e.g. 10000" value={liquid} onChange={(e) => setLiquid(e.target.value)} />
             </Field>
-            {/* Stress-test P2: reserve seasoning */}
             {liquid.trim() !== "" && (
-              <Field
-                id="q-reserves-seasoned"
-                label="Has that money been in your account for at least 60 days?"
-                help="Lenders count funds that have been seasoned 60+ days (or fully documented) toward reserves."
-              >
-                <select
-                  id="q-reserves-seasoned"
-                  className={inputCls}
-                  value={reservesSeasoned}
-                  onChange={(e) => setReservesSeasoned(e.target.value as "unsure" | "yes" | "no")}
-                >
-                  <option value="unsure">Not sure</option>
-                  <option value="yes">Yes, 60+ days</option>
-                  <option value="no">No, some is recent</option>
-                </select>
-              </Field>
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l-2 border-sage-200 pl-5 ml-1">
+                <Field id="q-reserves-seasoned" label="Has that money been in your account for at least 60 days?" help="Lenders count funds that have been seasoned 60+ days (or fully documented) toward reserves.">
+                  <ChoiceGroup id="q-reserves-seasoned" value={reservesSeasoned} onChange={(v) => setReservesSeasoned(v as any)} options={[{ value: "unsure", label: "Not sure" }, { value: "yes", label: "Yes, 60+ days" }, { value: "no", label: "No, some is recent" }]} />
+                </Field>
+              </div>
             )}
-            {propertyUse === PropertyUse.INVESTMENT && (
-              <Field
-                id="q-rent"
-                label="Expected monthly rent from this property"
-                help="Investor programs often qualify on the rent a property produces rather than your personal income."
-              >
-                <input
-                  id="q-rent"
-                  className={inputCls}
-                  inputMode="numeric"
-                  maxLength={9}
-                  placeholder="e.g. 2200"
-                  value={monthlyRent}
-                  onChange={(e) => setMonthlyRent(e.target.value)}
-                />
-              </Field>
-            )}
-            <Field
-              id="q-total-assets"
-              label="Total savings & investments (optional)"
-              help="Some programs qualify you on assets rather than income — this helps us check those."
-            >
-              <input
-                id="q-total-assets"
-                className={inputCls}
-                inputMode="numeric"
-                maxLength={15}
-                placeholder="e.g. 150000"
-                value={totalAssets}
-                onChange={(e) => setTotalAssets(e.target.value)}
-              />
+            <Field id="q-total-assets" label="Total savings & investments (optional)" help="Some programs qualify you on assets rather than income — this helps us check those.">
+              <input id="q-total-assets" className={inputCls} inputMode="numeric" maxLength={15} placeholder="e.g. 150000" value={totalAssets} onChange={(e) => setTotalAssets(e.target.value)} />
             </Field>
-            {/* P19: HOA + flood zone — both feed the PITI estimate */}
             <Field id="q-hoa" label="Monthly HOA fee (optional)" help="Condos and many planned communities charge one. Leave blank if none.">
-              <input
-                id="q-hoa"
-                className={inputCls}
-                inputMode="numeric"
-                maxLength={7}
-                placeholder="e.g. 250"
-                value={hoaFee}
-                onChange={(e) => setHoaFee(e.target.value)}
-              />
+              <input id="q-hoa" className={inputCls} inputMode="numeric" maxLength={7} placeholder="e.g. 250" value={hoaFee} onChange={(e) => setHoaFee(e.target.value)} />
             </Field>
             <Field id="q-flood" label="Is the home in a flood zone? (optional)" help="Not sure is fine — flood insurance, where required, raises the monthly payment.">
-              <select
-                id="q-flood"
-                className={inputCls}
-                value={floodZone}
-                onChange={(e) => setFloodZone(e.target.value as "unsure" | "yes" | "no")}
-              >
-                <option value="unsure">Not sure</option>
-                <option value="no">No</option>
-                <option value="yes">Yes</option>
-              </select>
+              <ChoiceGroup id="q-flood" value={floodZone} onChange={(v) => setFloodZone(v as any)} options={[{ value: "unsure", label: "Not sure" }, { value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
             </Field>
-            {/* Stress-test P2: USDA rural eligibility */}
             {loanType === LoanType.USDA && (
-              <Field
-                id="q-rural"
-                label="Is the property in a rural area or small town?"
-                help="USDA loans only apply in eligible rural areas — the USDA map online can confirm the address."
-              >
-                <select
-                  id="q-rural"
-                  className={inputCls}
-                  value={isRural}
-                  onChange={(e) => setIsRural(e.target.value as "unsure" | "yes" | "no")}
-                >
-                  <option value="unsure">Not sure</option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No, it's in a city or suburb</option>
-                </select>
-              </Field>
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l-2 border-sage-200 pl-5 ml-1">
+                <Field id="q-rural" label="Is the property in a rural area or small town?" help="USDA loans only apply in eligible rural areas — the USDA map online can confirm the address.">
+                  <ChoiceGroup id="q-rural" value={isRural} onChange={(v) => setIsRural(v as any)} options={[{ value: "unsure", label: "Not sure" }, { value: "yes", label: "Yes" }, { value: "no", label: "No, it's in a city or suburb" }]} />
+                </Field>
+              </div>
             )}
-            {/* Stress-test P2: large-deposit sourcing detail */}
-            <Field
-              id="q-large-deposits"
-              label="Any large deposits (over about half a month's income) in the last 2 months? (optional)"
-              help="Lenders ask for paperwork showing where big deposits came from — the count and amount help size that request."
-            >
-              <input
-                id="q-large-deposits"
-                className={inputCls}
-                inputMode="numeric"
-                maxLength={3}
-                placeholder="How many? e.g. 2 (0 if none)"
-                value={largeDepositCount}
-                onChange={(e) => setLargeDepositCount(e.target.value)}
-              />
+            <Field id="q-large-deposits" label="Any large deposits (over about half a month's income) in the last 2 months? (optional)" help="Lenders ask for paperwork showing where big deposits came from — the count and amount help size that request.">
+              <input id="q-large-deposits" className={inputCls} inputMode="numeric" maxLength={3} placeholder="How many? e.g. 2 (0 if none)" value={largeDepositCount} onChange={(e) => setLargeDepositCount(e.target.value)} />
             </Field>
             {largeDepositCount.trim() !== "" && num(largeDepositCount) > 0 && (
-              <Field id="q-large-deposit-total" label="Roughly how much in total? (optional)">
-                <input
-                  id="q-large-deposit-total"
-                  className={inputCls}
-                  inputMode="numeric"
-                  maxLength={12}
-                  placeholder="e.g. 15000"
-                  value={largeDepositTotal}
-                  onChange={(e) => setLargeDepositTotal(e.target.value)}
-                />
-              </Field>
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l-2 border-sage-200 pl-5 ml-1">
+                <Field id="q-large-deposit-total" label="Roughly how much in total? (optional)">
+                  <input id="q-large-deposit-total" className={inputCls} inputMode="numeric" maxLength={12} placeholder="e.g. 15000" value={largeDepositTotal} onChange={(e) => setLargeDepositTotal(e.target.value)} />
+                </Field>
+              </div>
             )}
-            {/* Stress-test P2: condo building review */}
             {(propertyType === PropertyType.CONDO_WARRANTABLE || propertyType === PropertyType.CONDO_NONWARRANTABLE) && (
               <>
-                <Field
-                  id="q-condo-litigation"
-                  label="Is the condo association in any lawsuits or disputes? (optional)"
-                  help="Pending litigation is one of the most common reasons a condo building fails lender review."
-                >
-                  <select id="q-condo-litigation" className={inputCls} value={condoLitigation} onChange={(e) => setCondoLitigation(e.target.value as "unsure" | "yes" | "no")}>
-                    <option value="unsure">Not sure</option>
-                    <option value="no">No</option>
-                    <option value="yes">Yes</option>
-                  </select>
+                <Field id="q-condo-litigation" label="Is the condo association in any lawsuits or disputes? (optional)" help="Pending litigation is one of the most common reasons a condo building fails lender review.">
+                  <ChoiceGroup id="q-condo-litigation" value={condoLitigation} onChange={(v) => setCondoLitigation(v as any)} options={[{ value: "unsure", label: "Not sure" }, { value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
                 </Field>
-                <Field
-                  id="q-condo-investor"
-                  label="Are most units owner-occupied, or rented out by investors? (optional)"
-                  help="Buildings where more than about a quarter of units are investor-owned or one company owns many units often fail review."
-                >
-                  <select id="q-condo-investor" className={inputCls} value={condoInvestorHigh} onChange={(e) => setCondoInvestorHigh(e.target.value as "unsure" | "yes" | "no")}>
-                    <option value="unsure">Not sure</option>
-                    <option value="no">Mostly owner-occupied</option>
-                    <option value="yes">Mostly rented / one owner owns several</option>
-                  </select>
+                <Field id="q-condo-investor" label="Are most units owner-occupied, or rented out by investors? (optional)" help="Buildings where more than about a quarter of units are investor-owned or one company owns many units often fail review.">
+                  <ChoiceGroup id="q-condo-investor" value={condoInvestorHigh} onChange={(v) => setCondoInvestorHigh(v as any)} options={[{ value: "unsure", label: "Not sure" }, { value: "no", label: "Mostly owner-occupied" }, { value: "yes", label: "Mostly rented / one owner owns several" }]} />
                 </Field>
-                <Field
-                  id="q-condo-delinquency"
-                  label="Are many owners behind on their HOA dues? (optional)"
-                >
-                  <select id="q-condo-delinquency" className={inputCls} value={condoDelinquency} onChange={(e) => setCondoDelinquency(e.target.value as "unsure" | "yes" | "no")}>
-                    <option value="unsure">Not sure</option>
-                    <option value="no">No / few</option>
-                    <option value="yes">Yes, many</option>
-                  </select>
+                <Field id="q-condo-delinquency" label="Are many owners behind on their HOA dues? (optional)">
+                  <ChoiceGroup id="q-condo-delinquency" value={condoDelinquency} onChange={(v) => setCondoDelinquency(v as any)} options={[{ value: "unsure", label: "Not sure" }, { value: "no", label: "No / few" }, { value: "yes", label: "Yes, many" }]} />
                 </Field>
               </>
             )}
-            {/* Stress-test P2: manufactured eligibility checklist */}
             {propertyType === PropertyType.MANUFACTURED && (
               <>
                 <Field id="q-mfd-land" label="Do you own the land, or is it a leased lot / park space?">
-                  <select id="q-mfd-land" className={inputCls} value={mfdLeasedLand} onChange={(e) => setMfdLeasedLand(e.target.value as "unsure" | "yes" | "no")}>
-                    <option value="unsure">Not sure</option>
-                    <option value="no">I own (or am buying) the land</option>
-                    <option value="yes">Leased lot or park space</option>
-                  </select>
+                  <ChoiceGroup id="q-mfd-land" value={mfdLeasedLand} onChange={(v) => setMfdLeasedLand(v as any)} options={[{ value: "unsure", label: "Not sure" }, { value: "no", label: "I own (or am buying) the land" }, { value: "yes", label: "Leased lot or park space" }]} />
                 </Field>
                 <Field id="q-mfd-width" label="Is it a single-wide or multi-section home?">
-                  <select id="q-mfd-width" className={inputCls} value={mfdSingleWide} onChange={(e) => setMfdSingleWide(e.target.value as "unsure" | "yes" | "no")}>
-                    <option value="unsure">Not sure</option>
-                    <option value="no">Double-wide or larger</option>
-                    <option value="yes">Single-wide</option>
-                  </select>
+                  <ChoiceGroup id="q-mfd-width" value={mfdSingleWide} onChange={(v) => setMfdSingleWide(v as any)} options={[{ value: "unsure", label: "Not sure" }, { value: "no", label: "Double-wide or larger" }, { value: "yes", label: "Single-wide" }]} />
                 </Field>
                 <Field id="q-mfd-year" label="Was it built before 1976?">
-                  <select id="q-mfd-year" className={inputCls} value={mfdPre1976} onChange={(e) => setMfdPre1976(e.target.value as "unsure" | "yes" | "no")}>
-                    <option value="unsure">Not sure</option>
-                    <option value="no">No, 1976 or later</option>
-                    <option value="yes">Yes</option>
-                  </select>
+                  <ChoiceGroup id="q-mfd-year" value={mfdPre1976} onChange={(v) => setMfdPre1976(v as any)} options={[{ value: "unsure", label: "Not sure" }, { value: "no", label: "No, 1976 or later" }, { value: "yes", label: "Yes" }]} />
                 </Field>
                 <Field id="q-mfd-foundation" label="Is it attached to a permanent foundation?">
-                  <select id="q-mfd-foundation" className={inputCls} value={mfdFoundation} onChange={(e) => setMfdFoundation(e.target.value as "unsure" | "yes" | "no")}>
-                    <option value="unsure">Not sure</option>
-                    <option value="no">Yes, permanent foundation</option>
-                    <option value="yes">No, on blocks/wheels</option>
-                  </select>
+                  <ChoiceGroup id="q-mfd-foundation" value={mfdFoundation} onChange={(v) => setMfdFoundation(v as any)} options={[{ value: "unsure", label: "Not sure" }, { value: "no", label: "Yes, permanent foundation" }, { value: "yes", label: "No, on blocks/wheels" }]} />
                 </Field>
               </>
             )}
-            {/* P19: gift funds + first-time buyer */}
             <Field id="q-gift" label="Will any of the down payment be a gift? (optional)" help="A documented gift from a relative is allowed on many programs — this just helps the estimate.">
-              <select
-                id="q-gift"
-                className={inputCls}
-                value={hasGiftFunds}
-                onChange={(e) => setHasGiftFunds(e.target.value as "no" | "yes")}
-              >
-                <option value="no">No, all my own funds</option>
-                <option value="yes">Yes, partly a gift</option>
-              </select>
+              <ChoiceGroup id="q-gift" value={hasGiftFunds} onChange={(v) => setHasGiftFunds(v as any)} options={[{ value: "no", label: "No, all my own funds" }, { value: "yes", label: "Yes, partly a gift" }]} />
             </Field>
             {hasGiftFunds === "yes" && (
-              <Field id="q-gift-amount" label="Roughly how much is a gift? (optional)">
-                <input
-                  id="q-gift-amount"
-                  className={inputCls}
-                  inputMode="numeric"
-                  maxLength={12}
-                  placeholder="e.g. 10000"
-                  value={giftFundsAmount}
-                  onChange={(e) => setGiftFundsAmount(e.target.value)}
-                />
-              </Field>
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l-2 border-sage-200 pl-5 ml-1">
+                <Field id="q-gift-amount" label="Roughly how much is a gift? (optional)">
+                  <input id="q-gift-amount" className={inputCls} inputMode="numeric" maxLength={12} placeholder="e.g. 10000" value={giftFundsAmount} onChange={(e) => setGiftFundsAmount(e.target.value)} />
+                </Field>
+              </div>
             )}
             <Field id="q-first-time" label="Is this your first home? (optional)">
-              <select
-                id="q-first-time"
-                className={inputCls}
-                value={isFirstTimeBuyer}
-                onChange={(e) => setIsFirstTimeBuyer(e.target.value as "unsure" | "yes" | "no")}
-              >
-                <option value="unsure">Prefer not to say</option>
-                <option value="yes">Yes</option>
-                <option value="no">No, I&apos;ve owned before</option>
-              </select>
+              <ChoiceGroup id="q-first-time" value={isFirstTimeBuyer} onChange={(v) => setIsFirstTimeBuyer(v as any)} options={[{ value: "unsure", label: "Prefer not to say" }, { value: "yes", label: "Yes" }, { value: "no", label: "No, I've owned before" }]} />
             </Field>
-            {/* P13: co-borrower */}
-            <Field id="q-co-borrower" label="Applying with someone else?">
-              <select
-                id="q-co-borrower"
-                className={inputCls}
-                value={hasCoBorrower}
-                onChange={(e) => setHasCoBorrower(e.target.value as "no" | "yes")}
-              >
-                <option value="no">No, just me</option>
-                <option value="yes">Yes, with a co-borrower</option>
-              </select>
-            </Field>
-            {hasCoBorrower === "yes" && (
-              <>
-                <Field id="q-co-income" label="Their gross monthly income (before taxes)">
-                  <input
-                    id="q-co-income"
-                    className={inputCls}
-                    inputMode="numeric"
-                    maxLength={12}
-                    placeholder="e.g. 4500"
-                    value={coBorrowerIncome}
-                    onChange={(e) => setCoBorrowerIncome(e.target.value)}
-                  />
+            {propertyUse === PropertyUse.INVESTMENT && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l-2 border-sage-200 pl-5 ml-1">
+                <Field id="q-rent" label="Expected monthly rent from this property" help="Investor programs often qualify on the rent a property produces rather than your personal income.">
+                  <input id="q-rent" className={inputCls} inputMode="numeric" maxLength={9} placeholder="e.g. 2200" value={monthlyRent} onChange={(e) => setMonthlyRent(e.target.value)} />
                 </Field>
-                <Field
-                  id="q-co-credit"
-                  label="Their credit range"
-                  help="Lenders usually price a joint application on the lower of the two credit scores."
-                >
-                  <select
-                    id="q-co-credit"
-                    className={inputCls}
-                    value={coBorrowerCreditTier}
-                    onChange={(e) => setCoBorrowerCreditTier(e.target.value as CreditTier)}
-                  >
-                    <option value={CreditTier.EXCELLENT}>Excellent (760+)</option>
-                    <option value={CreditTier.GOOD}>Good (700–759)</option>
-                    <option value={CreditTier.FAIR}>Fair (640–699)</option>
-                    <option value={CreditTier.POOR}>Below 640</option>
-                    <option value={CreditTier.UNKNOWN}>Not sure</option>
-                  </select>
-                </Field>
-              </>
+              </div>
             )}
           </div>
         </fieldset>
       )}
 
-      {/* Wizard navigation (P10) */}
-      <div className="flex items-center justify-between gap-3">
+      {step === 6 && (
+        <fieldset className="rounded-2xl border border-sand-200 bg-surface p-6 sm:p-8 shadow-sm animate-in fade-in duration-300">
+          <legend className="px-2 text-lg font-semibold text-warm-900">Your monthly debts</legend>
+          <p className="mb-6 text-sm text-warm-700">Everything except rent — detailing the type helps, since lenders treat some debts differently.</p>
+          <div className="flex flex-col gap-6">
+            <Field id="q-debt" label="Total monthly debt payments">
+              <input id="q-debt" className={inputCls} inputMode="numeric" maxLength={9} placeholder="e.g. 500" value={debt} onChange={(e) => setDebt(e.target.value)} />
+            </Field>
+            <Field id="q-student-loan" label="Do you have student loans?" help="Deferred or income-driven loans are counted differently than standard repayment.">
+              <ChoiceGroup id="q-student-loan" value={hasStudentLoan} onChange={(v) => setHasStudentLoan(v as any)} options={[{ value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
+            </Field>
+            {hasStudentLoan === "yes" && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l-2 border-sage-200 pl-5 ml-1 flex flex-col gap-6">
+                <Field id="q-student-status" label="How are they being paid right now?">
+                  <ChoiceGroup id="q-student-status" value={studentLoanStatus} onChange={(v) => setStudentLoanStatus(v as any)} options={[{ value: "repayment", label: "Standard / income-driven repayment" }, { value: "deferred", label: "Deferred or forbearance (not paying yet)" }]} />
+                </Field>
+                <Field id="q-student-balance" label="Total student loan balance" error={errors.studentLoanBalance}>
+                  <input id="q-student-balance" className={inputCls} inputMode="numeric" maxLength={10} placeholder="e.g. 35000" value={studentLoanBalance} aria-invalid={errors.studentLoanBalance ? true : undefined} aria-describedby={errors.studentLoanBalance ? "q-student-balance-error" : undefined} onChange={(e) => setStudentLoanBalance(e.target.value)} />
+                </Field>
+                <Field id="q-student-payment" label="Monthly student loan payment (0 if not paying yet)" help="If deferred, lenders typically count about 1% of the balance — we'll use that rule.">
+                  <input id="q-student-payment" className={inputCls} inputMode="numeric" maxLength={7} placeholder="e.g. 280" value={studentLoanPayment} onChange={(e) => setStudentLoanPayment(e.target.value)} />
+                </Field>
+              </div>
+            )}
+            <Field id="q-support" label="Do you pay alimony or child support?">
+              <ChoiceGroup id="q-support" value={hasSupportPayments} onChange={(v) => setHasSupportPayments(v as any)} options={[{ value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
+            </Field>
+            {hasSupportPayments === "yes" && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l-2 border-sage-200 pl-5 ml-1 flex flex-col gap-6">
+                <Field id="q-support-type" label="Which do you pay?">
+                  <ChoiceGroup id="q-support-type" value={supportType} onChange={(v) => setSupportType(v as any)} options={[{ value: "alimony_paid", label: "Alimony (spousal support)" }, { value: "child_support_paid", label: "Child support" }]} />
+                </Field>
+                <Field id="q-support-amount" label="Monthly amount you pay" error={errors.supportAmount}>
+                  <input id="q-support-amount" className={inputCls} inputMode="numeric" maxLength={7} placeholder="e.g. 800" value={supportAmount} aria-invalid={errors.supportAmount ? true : undefined} aria-describedby={errors.supportAmount ? "q-support-amount-error" : undefined} onChange={(e) => setSupportAmount(e.target.value)} />
+                </Field>
+                <Field id="q-support-months" label="How many months until it ends? (optional)" help="Support ending within 10 months is typically left out of the qualifying math — leave blank if there's no end date.">
+                  <input id="q-support-months" className={inputCls} inputMode="numeric" maxLength={4} placeholder="e.g. 8" value={supportMonthsLeft} onChange={(e) => setSupportMonthsLeft(e.target.value)} />
+                </Field>
+              </div>
+            )}
+            <Field id="q-cosigned" label="Is anyone else's debt on your credit because you cosigned for them?">
+              <ChoiceGroup id="q-cosigned" value={hasCosignedDebt} onChange={(v) => setHasCosignedDebt(v as any)} options={[{ value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
+            </Field>
+            {hasCosignedDebt === "yes" && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l-2 border-sage-200 pl-5 ml-1 flex flex-col gap-6">
+                <Field id="q-cosigned-payment" label="Monthly payment on that debt" error={errors.cosignedPayment}>
+                  <input id="q-cosigned-payment" className={inputCls} inputMode="numeric" maxLength={7} placeholder="e.g. 420" value={cosignedPayment} aria-invalid={errors.cosignedPayment ? true : undefined} aria-describedby={errors.cosignedPayment ? "q-cosigned-payment-error" : undefined} onChange={(e) => setCosignedPayment(e.target.value)} />
+                </Field>
+                <Field id="q-cosigned-ontime" label="Has the other person paid it on time for the last 12 months?" help="If yes and you can document it, lenders typically leave it out of your qualifying math.">
+                  <ChoiceGroup id="q-cosigned-ontime" value={cosignedOnTime12mo} onChange={(v) => setCosignedOnTime12mo(v as any)} options={[{ value: "no", label: "No / not sure" }, { value: "yes", label: "Yes" }]} />
+                </Field>
+              </div>
+            )}
+            <Field id="q-revolving-balance" label="Total balance on your credit cards (optional)" help="Card balances count at least 1-5% of the balance monthly — this refines your debt estimate.">
+              <input id="q-revolving-balance" className={inputCls} inputMode="numeric" maxLength={9} placeholder="e.g. 8000" value={revolvingBalance} onChange={(e) => setRevolvingBalance(e.target.value)} />
+            </Field>
+            {revolvingBalance.trim() !== "" && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l-2 border-sage-200 pl-5 ml-1">
+                <Field id="q-revolving-limit" label="Total credit limit across those cards (optional)" help="Balances near the limits can hold the score down even with perfect payment history — paying below 30% of the limits helps fastest." error={errors.revolvingLimit}>
+                  <input id="q-revolving-limit" className={inputCls} inputMode="numeric" maxLength={9} placeholder="e.g. 20000" value={revolvingLimit} aria-invalid={errors.revolvingLimit ? true : undefined} aria-describedby={errors.revolvingLimit ? "q-revolving-limit-error" : undefined} onChange={(e) => setRevolvingLimit(e.target.value)} />
+                </Field>
+              </div>
+            )}
+          </div>
+        </fieldset>
+      )}
+
+      <div className="mx-auto flex max-w-xl items-center justify-between gap-3">
         {step > 0 ? (
           <button
             type="button"

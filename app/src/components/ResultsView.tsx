@@ -234,8 +234,8 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
         </h2>
         <p className="mx-auto mt-2 max-w-xl text-sm text-warm-700">{RESULTS_SUBHEAD}</p>
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-          <span className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold ${pillClass}`}>
-            <TierIcon tier={result.compositeTier} />
+          <span className={`inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-4 text-xl sm:text-2xl font-bold shadow-sm ${pillClass}`}>
+            <TierIcon tier={result.compositeTier} className="w-8 h-8 sm:w-10 sm:h-10" />
             {TIER_LABELS[result.compositeTier]}
           </span>
           <span className="rounded-full bg-sand-100 px-3 py-1.5 text-xs text-warm-700">
@@ -329,44 +329,53 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
         </div>
       )}
 
-      {/* 5. Headline numbers (always ranges) */}
-      <div className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm">
-        <h3 className="text-base font-semibold text-warm-900">Your estimated ranges</h3>
-        <dl className="mt-2">
-          <RangeRow
-            label="Home price you may be able to work with"
-            low={result.affordablePurchasePrice.low}
-            high={result.affordablePurchasePrice.high}
-            mid={result.affordablePurchasePrice.mid}
-          />
-          <RangeRow
-            label="Loan amount"
-            low={result.maxLoanAmount.low}
-            high={result.maxLoanAmount.high}
-            mid={result.maxLoanAmount.mid}
-          />
-          <RangeRow
-            label="Estimated monthly payment (PITI)"
-            low={result.estimatedPiti.low}
-            high={result.estimatedPiti.high}
-            mid={result.estimatedPiti.mid}
-          />
-          <RangeRow
-            label="Estimated cash to close"
-            low={result.cashToClose.low}
-            high={result.cashToClose.high}
-            mid={result.cashToClose.mid}
-          />
-        </dl>
+      
+      {/* 5. Headline numbers (2x2 Dashboard Grid) */}
+      <div className="space-y-4">
+        <h3 className="text-xl font-bold text-warm-900">Your Estimated Snapshot</h3>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm flex flex-col justify-center">
+            <h4 className="text-sm font-medium text-warm-700">Max Loan Amount</h4>
+            <div className="mt-2 text-2xl sm:text-3xl font-bold text-warm-900">
+              {fmtUSD(result.maxLoanAmount.low)} – {fmtUSD(result.maxLoanAmount.high)}
+            </div>
+            <p className="mt-1 text-xs text-warm-500">about {fmtUSD(result.maxLoanAmount.mid)}</p>
+          </div>
+
+          <div className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm flex flex-col justify-center">
+            <h4 className="text-sm font-medium text-warm-700">Affordable Home Price</h4>
+            <div className="mt-2 text-2xl sm:text-3xl font-bold text-warm-900">
+              {fmtUSD(result.affordablePurchasePrice.low)} – {fmtUSD(result.affordablePurchasePrice.high)}
+            </div>
+            <p className="mt-1 text-xs text-warm-500">about {fmtUSD(result.affordablePurchasePrice.mid)}</p>
+          </div>
+
+          <div className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm flex flex-col justify-center">
+            <h4 className="text-sm font-medium text-warm-700">Monthly Payment (PITI)</h4>
+            <div className="mt-2 text-2xl sm:text-3xl font-bold text-warm-900">
+              {fmtUSD(result.estimatedPiti.low)} – {fmtUSD(result.estimatedPiti.high)}
+            </div>
+            <p className="mt-1 text-xs text-warm-500">about {fmtUSD(result.estimatedPiti.mid)}</p>
+          </div>
+
+          <div className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm flex flex-col justify-center">
+            <h4 className="text-sm font-medium text-warm-700">Cash to Close</h4>
+            <div className="mt-2 text-2xl sm:text-3xl font-bold text-warm-900">
+              {fmtUSD(result.cashToClose.low)} – {fmtUSD(result.cashToClose.high)}
+            </div>
+            <p className="mt-1 text-xs text-warm-500">about {fmtUSD(result.cashToClose.mid)}</p>
+          </div>
+        </div>
+        
         {showNonQmRateNote && (
-          <p className="mt-2 text-xs font-medium text-warm-700">
+          <p className="text-xs font-medium text-warm-700 bg-sand-50 p-3 rounded-xl border border-sand-200">
             Investor and alternative-documentation program rates typically price
             0.75–1.75 points above comparable conventional loans — and for the
             investor cash-flow program, the rent the property produces, not
             your personal income, drives that program.
           </p>
         )}
-        <p className="mt-3 text-xs text-warm-500">
+        <p className="text-xs text-warm-500 px-2">
           Payment estimates exclude taxes and insurance where noted and may be greater.
           Actual terms depend on your full financial picture and the lender.
         </p>
