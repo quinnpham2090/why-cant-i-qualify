@@ -8,8 +8,8 @@
 ## Summary
 
 - **Scenarios:** 40
-- **Engine tiers:** some_considerations 15 · workable 18 · good_fit 3 · limited_fit 3 · strong_fit 1
-- **Obstacle detection:** 14 yes / 21 partially / 3 correctly-resolved (false denial averted) / 2 missed
+- **Engine tiers:** some_considerations 16 · workable 17 · good_fit 3 · limited_fit 3 · strong_fit 1
+- **Obstacle detection:** 13 yes / 22 partially / 3 correctly-resolved (false denial averted) / 2 missed
 - **Key finding:** DTI, credit-event waiting periods, and down-payment floors are well-caught; revolving-utilization granularity, alimony/cosigned nuance, HOA-cert specifics, flood-cost impact on DTI, and declining-income trends are blind spots.
 
 ---
@@ -47,11 +47,11 @@
 | 27 | CASH-03 | 45-year-old Orlando investor | Investment 2-4 unit needs 20-25% down; 6mo reserves for subject + 2 re | workable | credit: The estimated credit score may be below the typical requi | partially |
 | 28 | CASH-04 | 38-year-old Tampa plumber | 2.82% < FHA 3.5% floor; unsourced large deposits; cash-to-close shortf | limited_fit | cash: The down payment you entered is below the typical 3.5% mini | yes |
 | 29 | CASH-05 | 29-year-old Miami gig worker | 0% <3% conv/3.5% FHA/5% manufactured min; 0 months reserves; cash-undo | limited_fit | credit: The estimated credit score may be below the typical requi | partially |
-| 30 | CASH-06 | 34-year-old Pensacola veteran VA 0% down $390k | VA 0% still needs closing + reserves; 0.4mo reserves + unsourced Zelle | some_considerations | debt: The estimated debt-to-income ratio appears to be above 50%. | partially |
+| 30 | CASH-06 | 34-year-old Pensacola veteran VA 0% down $390k | VA 0% still needs closing + reserves; 0.4mo reserves + unsourced Zelle | some_considerations | credit: The estimated credit score may be below the typical requi | partially |
 | 31 | CASH-07 | 31-year-old Gainesville LPN | 2.09% <3.5% FHA; $6k gift undocumented cannot count; 0.2mo reserves | some_considerations | cash: The down payment you entered is below the typical 3.5% mini | yes |
 | 32 | CASH-08 | 42 & 40 Miami teachers dual W-2 | 25% down meets LTV but $0 reserves fails 6-12mo PITIA+ flood for >$500 | strong_fit | cash: You may have little or nothing left in savings after closin | resolved |
 | 33 | PROP-01 | 32-year-old Brickell marketing coordinator | Non-warrantable: litigation + single-entity >20% exceeds Fannie/Freddi | workable | credit: The estimated credit score may be below the typical requi | partially |
-| 34 | PROP-02 | 58-year-old retired veteran | Manufactured: single-wide, pre-HUD code, leased land, no permanent fou | workable | property: Manufactured homes must sit on owned land with a perman | yes |
+| 34 | PROP-02 | 58-year-old retired veteran | Manufactured: single-wide, pre-HUD code, leased land, no permanent fou | some_considerations | credit: The estimated credit score may be below the typical requi | partially |
 | 35 | PROP-03 | 41-year-old Tampa contractor investor | Investment 2-4 unit needs 25% down; DSCR 0.92 <1.0 fails investor cash | good_fit | credit: The estimated credit score may be below the typical requi | partially |
 | 36 | PROP-04 | 67-year-old Fort Myers retiree | HOA delinquency >15% + low reserves + flood AE mandatory insurance fai | workable | debt: The estimated debt-to-income ratio appears to be above 50%. | partially |
 | 37 | PROP-05 | 29-year-old Miami crypto trader | Large unexplained deposit $15k >50% of monthly income without 2mo sour | workable | debt: The estimated debt-to-income ratio appears to be above 50%. | partially |
@@ -71,7 +71,7 @@
 
 **Inputs:** income $4800/mo (w2, unknown doc), FICO 540, DTI inputs debt $650/mo, down $25000 on $250000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `some_considerations` (51), DTI 57.3% back-end / 43.7% front-end, eligible `[fha]`, recommended `fha`, confidence `high`
+**Engine result:** tier `some_considerations` (51), DTI 57.3% back-end / 43.7% front-end, eligible `[fha, naca]`, recommended `fha`, confidence `high`
 
 **Primary obstacle:** [credit] The estimated credit score may be below the typical requirement for the program you selected; other programs may fit better. *(fix: 3-12 months)*
 
@@ -91,7 +91,7 @@
 
 **Inputs:** income $6200/mo (w2, unknown doc), FICO 660, DTI inputs debt $1100/mo, down $15000 on $300000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `some_considerations` (53), DTI 59.1% back-end / 41.3% front-end, eligible `[conventional_conf, fha]`, recommended `conventional_conf`, confidence `high`
+**Engine result:** tier `some_considerations` (53), DTI 59.1% back-end / 41.3% front-end, eligible `[conventional_conf, fha, naca]`, recommended `conventional_conf`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
@@ -109,7 +109,7 @@
 
 **Inputs:** income $7500/mo (w2, unknown doc), FICO 640, DTI inputs debt $1200/mo, down $45000 on $300000, sfr / primary, FL, event bk_ch7 1.5yr ago, reserves $10000
 
-**Engine result:** tier `workable` (67), DTI 45.1% back-end / 29.1% front-end, eligible `[unknown]`, recommended `—`, confidence `high`
+**Engine result:** tier `workable` (67), DTI 45.1% back-end / 29.1% front-end, eligible `[naca]`, recommended `naca`, confidence `high`
 
 **Primary obstacle:** [credit] The estimated credit score may be below the typical requirement for the program you selected; other programs may fit better. *(fix: 3-12 months)*
 
@@ -129,7 +129,7 @@
 
 **Inputs:** income $5800/mo (w2, unknown doc), FICO 660, DTI inputs debt $900/mo, down $12250 on $350000, sfr / primary, FL, event foreclosure 0.83yr ago, reserves $10000
 
-**Engine result:** tier `some_considerations` (51), DTI 65.0% back-end / 49.5% front-end, eligible `[unknown]`, recommended `—`, confidence `high`
+**Engine result:** tier `some_considerations` (51), DTI 65.0% back-end / 49.5% front-end, eligible `[naca]`, recommended `naca`, confidence `high`
 
 **Primary obstacle:** [credit] The estimated credit score may be below the typical requirement for the program you selected; other programs may fit better. *(fix: 3-12 months)*
 
@@ -149,7 +149,7 @@
 
 **Inputs:** income $4200/mo (w2, unknown doc), FICO unknown, DTI inputs debt $400/mo, down $8000 on $220000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `some_considerations` (48), DTI 57.1% back-end / 47.6% front-end, eligible `[conventional_conf, fha]`, recommended `fha`, confidence `high`
+**Engine result:** tier `some_considerations` (48), DTI 57.1% back-end / 47.6% front-end, eligible `[conventional_conf, fha, naca]`, recommended `fha`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
@@ -167,7 +167,7 @@
 
 **Inputs:** income $9500/mo (w2, unknown doc), FICO 740, DTI inputs debt $1600/mo, down $40000 on $400000, sfr / primary, FL, event short_sale 2yr ago, reserves $10000
 
-**Engine result:** tier `good_fit` (72), DTI 46.6% back-end / 29.7% front-end, eligible `[unknown]`, recommended `—`, confidence `high`
+**Engine result:** tier `good_fit` (72), DTI 46.6% back-end / 29.7% front-end, eligible `[naca]`, recommended `naca`, confidence `high`
 
 **Primary obstacle:** [credit] The estimated credit score may be below the typical requirement for the program you selected; other programs may fit better. *(fix: 3-12 months)*
 
@@ -207,7 +207,7 @@
 
 **Inputs:** income $6500/mo (w2, unknown doc), FICO 700, DTI inputs debt $1450/mo, down $12000 on $280000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `workable` (61), DTI 56.1% back-end / 35.8% front-end, eligible `[conventional_conf, fha]`, recommended `fha`, confidence `high`
+**Engine result:** tier `workable` (61), DTI 56.1% back-end / 35.8% front-end, eligible `[conventional_conf, fha, naca]`, recommended `fha`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
@@ -225,7 +225,7 @@
 
 **Inputs:** income $7200/mo (self_employed, full_tax_1yr), FICO 732, DTI inputs debt $1680/mo, down $15500 on $395000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `some_considerations` (48), DTI 68.3% back-end / 45.0% front-end, eligible `[conventional_conf, conventional_jumbo, fha, non_qm_jumbo]`, recommended `fha`, confidence `high`
+**Engine result:** tier `some_considerations` (48), DTI 68.3% back-end / 45.0% front-end, eligible `[conventional_conf, conventional_jumbo, fha, naca, non_qm_jumbo]`, recommended `fha`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
@@ -245,7 +245,7 @@
 
 **Inputs:** income $8500/mo (commission, w2_stubs), FICO 690, DTI inputs debt $1450/mo, down $33500 on $335000, condo_warrantable / primary, FL, reserves $10000
 
-**Engine result:** tier `some_considerations` (52), DTI 61.9% back-end / 41.9% front-end, eligible `[conventional_conf, fha]`, recommended `conventional_conf`, confidence `high`
+**Engine result:** tier `some_considerations` (52), DTI 61.9% back-end / 41.9% front-end, eligible `[conventional_conf, fha, naca]`, recommended `conventional_conf`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
@@ -263,7 +263,7 @@
 
 **Inputs:** income $6200/mo (mixed, cash_undocumented), FICO 660, DTI inputs debt $980/mo, down $14250 on $285000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `some_considerations` (44), DTI 68.9% back-end / 49.2% front-end, eligible `[conventional_conf, fha, bank_statement]`, recommended `conventional_conf`, confidence `high`
+**Engine result:** tier `some_considerations` (44), DTI 68.9% back-end / 49.2% front-end, eligible `[conventional_conf, fha, naca, bank_statement]`, recommended `conventional_conf`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
@@ -281,7 +281,7 @@
 
 **Inputs:** income $5800/mo (variable_hourly, w2_stubs), FICO 715, DTI inputs debt $1120/mo, down $10500 on $350000, condo_warrantable / primary, FL, reserves $10000
 
-**Engine result:** tier `some_considerations` (51), DTI 78.2% back-end / 58.9% front-end, eligible `[conventional_conf, fha, non_qm_jumbo]`, recommended `fha`, confidence `high`
+**Engine result:** tier `some_considerations` (51), DTI 78.2% back-end / 58.9% front-end, eligible `[conventional_conf, fha, naca, non_qm_jumbo]`, recommended `fha`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
@@ -299,7 +299,7 @@
 
 **Inputs:** income $6800/mo (mixed, full_tax_2yr), FICO 790, DTI inputs debt $1850/mo, down $42500 on $425000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `workable` (57), DTI 70.8% back-end / 43.6% front-end, eligible `[conventional_conf, conventional_jumbo, fha, non_qm_jumbo]`, recommended `conventional_conf`, confidence `high`
+**Engine result:** tier `workable` (57), DTI 70.8% back-end / 43.6% front-end, eligible `[conventional_conf, conventional_jumbo, fha, naca, non_qm_jumbo]`, recommended `conventional_conf`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
@@ -319,7 +319,7 @@
 
 **Inputs:** income $6200/mo (w2, w2_offer_letter), FICO 565, DTI inputs debt $1350/mo, down $0 on $310000, townhome / primary, FL, reserves $3800
 
-**Engine result:** tier `limited_fit` (39), DTI 69.6% back-end / 47.8% front-end, eligible `[unknown]`, recommended `—`, confidence `high`
+**Engine result:** tier `limited_fit` (39), DTI 69.6% back-end / 47.8% front-end, eligible `[naca]`, recommended `naca`, confidence `high`
 
 **Primary obstacle:** [credit] The estimated credit score may be below the typical requirement for the program you selected; other programs may fit better. *(fix: 3-12 months)*
 
@@ -339,7 +339,7 @@
 
 **Inputs:** income $14500/mo (self_employed, bank_statement_12), FICO 680, DTI inputs debt $2200/mo, down $82500 on $550000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `some_considerations` (49), DTI 57.4% back-end / 37.2% front-end, eligible `[conventional_conf, fha, bank_statement]`, recommended `conventional_conf`, confidence `high`
+**Engine result:** tier `some_considerations` (49), DTI 57.4% back-end / 37.2% front-end, eligible `[conventional_conf, fha, naca, bank_statement]`, recommended `conventional_conf`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
@@ -357,7 +357,7 @@
 
 **Inputs:** income $15000/mo (self_employed, full_tax_2yr), FICO 760, DTI inputs debt $2100/mo, down $112500 on $450000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `good_fit` (84), DTI 32.1% back-end / 18.1% front-end, eligible `[conventional_conf, conventional_jumbo, fha, non_qm_jumbo]`, recommended `conventional_conf`, confidence `high`
+**Engine result:** tier `good_fit` (84), DTI 32.1% back-end / 18.1% front-end, eligible `[conventional_conf, conventional_jumbo, fha, naca, non_qm_jumbo]`, recommended `conventional_conf`, confidence `high`
 
 **Strengths:** Estimated debt-to-income ratio is well within typical limits. · A down payment of 20% or more typically removes the need for mortgage insurance.
 
@@ -375,7 +375,7 @@
 
 **Inputs:** income $5800/mo (w2, unknown doc), FICO 700, DTI inputs debt $1270/mo, down $13475 on $385000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `workable` (55), DTI 75.7% back-end / 53.8% front-end, eligible `[conventional_conf, fha]`, recommended `fha`, confidence `high`
+**Engine result:** tier `workable` (55), DTI 75.7% back-end / 53.8% front-end, eligible `[conventional_conf, fha, naca]`, recommended `fha`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
@@ -393,7 +393,7 @@
 
 **Inputs:** income $4500/mo (w2, unknown doc), FICO 700, DTI inputs debt $650/mo, down $10000 on $280000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `workable` (57), DTI 77.6% back-end / 63.1% front-end, eligible `[conventional_conf, fha]`, recommended `fha`, confidence `high`
+**Engine result:** tier `workable` (57), DTI 77.6% back-end / 63.1% front-end, eligible `[conventional_conf, fha, naca]`, recommended `fha`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
@@ -411,7 +411,7 @@
 
 **Inputs:** income $6200/mo (w2, unknown doc), FICO 680, DTI inputs debt $950/mo, down $12000 on $320000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `workable` (56), DTI 64.1% back-end / 45.9% front-end, eligible `[conventional_conf, fha]`, recommended `fha`, confidence `high`
+**Engine result:** tier `workable` (56), DTI 64.1% back-end / 45.9% front-end, eligible `[conventional_conf, fha, naca]`, recommended `fha`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
@@ -429,7 +429,7 @@
 
 **Inputs:** income $8500/mo (w2, unknown doc), FICO 720, DTI inputs debt $2100/mo, down $30000 on $400000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `workable` (69), DTI 48.0% back-end / 36.2% front-end, eligible `[conventional_conf, conventional_jumbo, fha]`, recommended `conventional_conf`, confidence `high`
+**Engine result:** tier `workable` (69), DTI 48.0% back-end / 36.2% front-end, eligible `[conventional_conf, conventional_jumbo, fha, naca]`, recommended `conventional_conf`, confidence `high`
 
 **Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
 
@@ -445,7 +445,7 @@
 
 **Inputs:** income $6800/mo (w2, unknown doc), FICO 700, DTI inputs debt $1650/mo, down $20000 on $350000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `workable` (62), DTI 52.7% back-end / 40.5% front-end, eligible `[conventional_conf, fha]`, recommended `conventional_conf`, confidence `high`
+**Engine result:** tier `workable` (62), DTI 52.7% back-end / 40.5% front-end, eligible `[conventional_conf, fha, naca]`, recommended `conventional_conf`, confidence `high`
 
 **Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
 
@@ -461,7 +461,7 @@
 
 **Inputs:** income $5800/mo (w2, unknown doc), FICO 690, DTI inputs debt $1100/mo, down $15000 on $300000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `workable` (59), DTI 53.6% back-end / 44.2% front-end, eligible `[conventional_conf, fha]`, recommended `conventional_conf`, confidence `high`
+**Engine result:** tier `workable` (59), DTI 53.6% back-end / 44.2% front-end, eligible `[conventional_conf, fha, naca]`, recommended `conventional_conf`, confidence `high`
 
 **Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
 
@@ -477,7 +477,7 @@
 
 **Inputs:** income $7200/mo (w2, unknown doc), FICO 700, DTI inputs debt $1200/mo, down $25000 on $380000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `workable` (58), DTI 60.8% back-end / 41.1% front-end, eligible `[conventional_conf, fha]`, recommended `conventional_conf`, confidence `high`
+**Engine result:** tier `workable` (58), DTI 60.8% back-end / 41.1% front-end, eligible `[conventional_conf, fha, naca]`, recommended `conventional_conf`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
@@ -495,7 +495,7 @@
 
 **Inputs:** income $9000/mo (w2, unknown doc), FICO 740, DTI inputs debt $1900/mo, down $40000 on $500000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `workable` (59), DTI 61.8% back-end / 40.7% front-end, eligible `[conventional_conf, conventional_jumbo, fha]`, recommended `conventional_conf`, confidence `high`
+**Engine result:** tier `workable` (59), DTI 61.8% back-end / 40.7% front-end, eligible `[conventional_conf, conventional_jumbo, fha, naca]`, recommended `conventional_conf`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
@@ -513,7 +513,7 @@
 
 **Inputs:** income $5200/mo (w2, unknown doc), FICO 702, DTI inputs debt $980/mo, down $6000 on $315000, sfr / primary, FL, reserves $500
 
-**Engine result:** tier `some_considerations` (48), DTI 56.7% back-end / 42.7% front-end, eligible `[conventional_conf, fha]`, recommended `fha`, confidence `high`
+**Engine result:** tier `some_considerations` (48), DTI 56.7% back-end / 42.7% front-end, eligible `[conventional_conf, fha, naca]`, recommended `fha`, confidence `high`
 
 **Primary obstacle:** [cash] The down payment you entered is below the typical 3% minimum for this program. *(fix: 0-3 months)*
 
@@ -533,7 +533,7 @@
 
 **Inputs:** income $3850/mo (retired_fixed, w2_stubs), FICO 744, DTI inputs debt $420/mo, down $14000 on $280000, condo_warrantable / primary, FL, reserves $1200
 
-**Engine result:** tier `some_considerations` (52), DTI 77.1% back-end / 66.2% front-end, eligible `[conventional_conf, conventional_jumbo, fha, non_qm_jumbo]`, recommended `conventional_conf`, confidence `high`
+**Engine result:** tier `some_considerations` (52), DTI 77.1% back-end / 66.2% front-end, eligible `[conventional_conf, conventional_jumbo, fha, naca, non_qm_jumbo]`, recommended `conventional_conf`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
@@ -573,7 +573,7 @@
 
 **Inputs:** income $7800/mo (self_employed, bank_statement_12), FICO 632, DTI inputs debt $1450/mo, down $12000 on $425000, sfr / primary, FL, reserves $800
 
-**Engine result:** tier `limited_fit` (35), DTI 101.8% back-end / 73.8% front-end, eligible `[fha]`, recommended `fha`, confidence `high`
+**Engine result:** tier `limited_fit` (35), DTI 101.8% back-end / 73.8% front-end, eligible `[fha, naca]`, recommended `fha`, confidence `high`
 
 **Primary obstacle:** [cash] The down payment you entered is below the typical 3.5% minimum for this program. *(fix: 0-3 months)*
 
@@ -593,7 +593,7 @@
 
 **Inputs:** income $4800/mo (variable_hourly, cash_undocumented), FICO 602, DTI inputs debt $850/mo, down $0 on $260000, manufactured / primary, FL, reserves $0
 
-**Engine result:** tier `limited_fit` (36), DTI 76.4% back-end / 56.7% front-end, eligible `[fha]`, recommended `fha`, confidence `high`
+**Engine result:** tier `limited_fit` (36), DTI 76.4% back-end / 56.7% front-end, eligible `[fha, naca]`, recommended `fha`, confidence `high`
 
 **Primary obstacle:** [credit] The estimated credit score may be below the typical requirement for the program you selected; other programs may fit better. *(fix: 3-12 months)*
 
@@ -613,13 +613,13 @@
 
 **Inputs:** income $6500/mo (w2, unknown doc), FICO 735, DTI inputs debt $800/mo, down $0 on $390000, sfr / primary, FL, reserves $1200
 
-**Engine result:** tier `some_considerations` (51), DTI 59.7% back-end / 47.4% front-end, eligible `[conventional_conf, conventional_jumbo, fha, va]`, recommended `va`, confidence `high`
+**Engine result:** tier `some_considerations` (50), DTI 63.2% back-end / 50.9% front-end, eligible `[conventional_conf, conventional_jumbo, fha, naca]`, recommended `fha`, confidence `high`
 
-**Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
+**Primary obstacle:** [credit] The estimated credit score may be below the typical requirement for the program you selected; other programs may fit better. *(fix: 3-12 months)*
 
-**Secondary:** [cash] Savings after closing cover less than one month of payments; building toward two to six months of reserves would strengthen the file.
+**Secondary:** [debt] The estimated debt-to-income ratio appears to be above 50%. · [cash] Savings after closing cover less than one month of payments; building toward two to six months of reserves would strengthen the file.
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate
+**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -633,7 +633,7 @@
 
 **Inputs:** income $5200/mo (w2, unknown doc), FICO 662, DTI inputs debt $610/mo, down $7000 on $335000, townhome / primary, FL, reserves $500
 
-**Engine result:** tier `some_considerations` (47), DTI 72.5% back-end / 60.8% front-end, eligible `[conventional_conf, fha]`, recommended `fha`, confidence `high`
+**Engine result:** tier `some_considerations` (47), DTI 72.5% back-end / 60.8% front-end, eligible `[conventional_conf, fha, naca]`, recommended `fha`, confidence `high`
 
 **Primary obstacle:** [cash] The down payment you entered is below the typical 3.5% minimum for this program. *(fix: 0-3 months)*
 
@@ -653,7 +653,7 @@
 
 **Inputs:** income $11200/mo (w2, unknown doc), FICO 802, DTI inputs debt $1420/mo, down $156250 on $625000, sfr / primary, FL, reserves $0
 
-**Engine result:** tier `strong_fit` (85), DTI 31.8% back-end / 23.2% front-end, eligible `[conventional_conf, conventional_jumbo, fha]`, recommended `conventional_conf`, confidence `high`
+**Engine result:** tier `strong_fit` (85), DTI 31.8% back-end / 23.2% front-end, eligible `[conventional_conf, conventional_jumbo, fha, naca]`, recommended `conventional_conf`, confidence `high`
 
 **Primary obstacle:** [cash] You may have little or nothing left in savings after closing; lenders typically want at least one to six months of payments in reserve after the loan closes. *(fix: 0-3 months)*
 
@@ -673,13 +673,13 @@
 
 **Inputs:** income $7200/mo (w2, unknown doc), FICO 760, DTI inputs debt $700/mo, down $19250 on $385000, condo_nonwarrantable / primary, FL, reserves $10000
 
-**Engine result:** tier `workable` (58), DTI 58.5% back-end / 48.8% front-end, eligible `[non_warrantable]`, recommended `non_warrantable`, confidence `high`
+**Engine result:** tier `workable` (58), DTI 57.8% back-end / 48.1% front-end, eligible `[naca, non_warrantable]`, recommended `naca`, confidence `high`
 
 **Primary obstacle:** [credit] The estimated credit score may be below the typical requirement for the program you selected; other programs may fit better. *(fix: 3-12 months)*
 
 **Secondary:** [debt] The estimated debt-to-income ratio appears to be above 50%. · [property] The condo building appears to be non-warrantable (for example pending litigation, high investor ownership, or delinquent association dues), which excludes most standard loan programs; specialized lenders handle these buildings.
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, non_qm_rate_addon, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** hazard_insurance, fico_haircut, non_qm_rate_addon, assumed_rate
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -693,15 +693,15 @@
 
 **Inputs:** income $5400/mo (retired_fixed, unknown doc), FICO 690, DTI inputs debt $595/mo, down $0 on $195000, manufactured / primary, FL, reserves $10000
 
-**Engine result:** tier `workable` (56), DTI 53.1% back-end / 42.1% front-end, eligible `[conventional_conf, fha, va]`, recommended `va`, confidence `high`
+**Engine result:** tier `some_considerations` (52), DTI 56.1% back-end / 45.1% front-end, eligible `[conventional_conf, fha, naca]`, recommended `fha`, confidence `high`
 
-**Primary obstacle:** [property] Manufactured homes must sit on owned land with a permanent foundation and typically must be a multi-section (double-wide or larger) home built after 1976 to use most standard loan programs. *(fix: out_of_user_control)*
+**Primary obstacle:** [credit] The estimated credit score may be below the typical requirement for the program you selected; other programs may fit better. *(fix: 3-12 months)*
 
-**Secondary:** [debt] For VA loans, lenders can also look at residual income — the money left each month after taxes and living costs. A closer budget review sometimes works when the ratio alone looks tight.
+**Secondary:** [debt] The estimated debt-to-income ratio appears to be above 50%. · [property] Manufactured homes must sit on owned land with a permanent foundation and typically must be a multi-section (double-wide or larger) home built after 1976 to use most standard loan programs.
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate
+**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
 
-**Detected?** yes — _Engine obstacle matches denial reason_
+**Detected?** partially — _Engine flags a related area but not the precise trigger_
 
 ---
 
@@ -733,7 +733,7 @@
 
 **Inputs:** income $4800/mo (retired_fixed, unknown doc), FICO 800, DTI inputs debt $405/mo, down $62000 on $310000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `workable` (62), DTI 59.2% back-end / 50.8% front-end, eligible `[conventional_conf, conventional_jumbo, fha]`, recommended `conventional_conf`, confidence `high`
+**Engine result:** tier `workable` (62), DTI 59.2% back-end / 50.8% front-end, eligible `[conventional_conf, conventional_jumbo, fha, naca]`, recommended `conventional_conf`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
@@ -753,7 +753,7 @@
 
 **Inputs:** income $6800/mo (w2, unknown doc), FICO 720, DTI inputs debt $950/mo, down $25000 on $400000, sfr / primary, FL, reserves $12000
 
-**Engine result:** tier `workable` (56), DTI 59.8% back-end / 45.8% front-end, eligible `[conventional_conf, conventional_jumbo, fha]`, recommended `conventional_conf`, confidence `high`
+**Engine result:** tier `workable` (56), DTI 59.8% back-end / 45.8% front-end, eligible `[conventional_conf, conventional_jumbo, fha, naca]`, recommended `conventional_conf`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
@@ -771,7 +771,7 @@
 
 **Inputs:** income $8200/mo (w2, unknown doc), FICO 740, DTI inputs debt $1400/mo, down $21000 on $420000, multi_2_4 / primary, FL, reserves $10000
 
-**Engine result:** tier `workable` (61), DTI 55.9% back-end / 38.8% front-end, eligible `[conventional_conf, conventional_jumbo, fha]`, recommended `conventional_conf`, confidence `high`
+**Engine result:** tier `workable` (61), DTI 55.9% back-end / 38.8% front-end, eligible `[conventional_conf, conventional_jumbo, fha, naca]`, recommended `conventional_conf`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
@@ -789,7 +789,7 @@
 
 **Inputs:** income $5200/mo (w2, unknown doc), FICO 630, DTI inputs debt $750/mo, down $0 on $285000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `some_considerations` (51), DTI 64.1% back-end / 49.7% front-end, eligible `[fha]`, recommended `fha`, confidence `high`
+**Engine result:** tier `some_considerations` (51), DTI 64.1% back-end / 49.7% front-end, eligible `[fha, naca]`, recommended `fha`, confidence `high`
 
 **Primary obstacle:** [credit] The estimated credit score may be below the typical requirement for the program you selected; other programs may fit better. *(fix: 3-12 months)*
 
@@ -809,7 +809,7 @@
 
 **Inputs:** income $0/mo (unknown, asset_depletion), FICO unknown, DTI inputs debt $300/mo, down $120000 on $400000, sfr / primary, FL, reserves $680000
 
-**Engine result:** tier `some_considerations` (41), DTI 273428.8% back-end / 243428.8% front-end, eligible `[conventional_conf, fha]`, recommended `conventional_conf`, confidence `high`
+**Engine result:** tier `some_considerations` (41), DTI 273428.8% back-end / 243428.8% front-end, eligible `[conventional_conf, fha, naca]`, recommended `conventional_conf`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
@@ -906,4 +906,4 @@
 
 ---
 
-*Method: 40 scenarios run through the live deterministic engine at 2026-08-29T03:06:09.925Z. Tiers, DTI, eligible programs, obstacles, strengths, assumptions, and confidence are the engine's actual outputs. Missing-question and solution rankings are synthesized from the coverage gaps above.*
+*Method: 40 scenarios run through the live deterministic engine at 2026-08-29T14:13:52.407Z. Tiers, DTI, eligible programs, obstacles, strengths, assumptions, and confidence are the engine's actual outputs. Missing-question and solution rankings are synthesized from the coverage gaps above.*

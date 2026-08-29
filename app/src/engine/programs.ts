@@ -9,45 +9,228 @@ import {
   PROGRAM_MIN_FICO,
   USDA_ANNUAL_GUARANTEE_PCT,
 } from "./tables";
-import { LoanType, PropertyType, PropertyUse, type EngineInputs } from "./types";
+import {
+  LoanType,
+  PropertyType,
+  PropertyUse,
+  ResidencyStatus,
+  type EngineInputs,
+} from "./types";
 import type { CreditProfile } from "./credit";
 
-/** Determine which programs the inputs are plausibly eligible for. */
+/**
+ * Residency eligibility for AGENCY programs (LOAN_PROGRAMS_CATALOG.md §0/§O).
+ * FHA is hard-blocked for every non-permanent resident class: HUD removed
+ * non-permanent residents from FHA Title I, Title II, and HECM (2025).
+ * USDA additionally accepts only specific EAD codes for NPR borrowers.
+ */
+export function residencyAllowsAgency(
+  residency: ResidencyStatus | null | undefined,
+  program: "conventional" | "fha" | "va" | "usda",
+): boolean {
+  switch (program) {
+    case "conventional":
+      // Fannie/Freddie allow citizens, permanent residents, and non-permanent
+      // residents with work authorization + SSN (incl. DACA w/ EAD).
+      return (
+        residency == null ||
+        residency === ResidencyStatus.UNKNOWN ||
+        residency === ResidencyStatus.US_CITIZEN ||
+        residency === ResidencyStatus.PERMANENT_RESIDENT ||
+        residency === ResidencyStatus.NON_PERMANENT_EAD
+      );
+    case "fha":
+      // Citizens and permanent residents only (post-2025 HUD policy).
+      return (
+        residency == null ||
+        residency === ResidencyStatus.UNKNOWN ||
+        residency === ResidencyStatus.US_CITIZEN ||
+        residency === ResidencyStatus.PERMANENT_RESIDENT
+      );
+    case "va":
+      // VA eligibility flows from service; residency gates per VA/USCIS rules.
+      return (
+        residency == null ||
+        residency === ResidencyStatus.UNKNOWN ||
+        residency === ResidencyStatus.US_CITIZEN ||
+        residency === ResidencyStatus.PERMANENT_RESIDENT ||
+        residency === ResidencyStatus.NON_PERMANENT_EAD
+      );
+    case "usda":
+      // Citizens/PRs; NPRs only with specific EAD codes (A1/A3/A5/A10/C11).
+      return (
+        residency == null ||
+        residency === ResidencyStatus.UNKNOWN ||
+        residency === ResidencyStatus.US_CITIZEN ||
+        residency === ResidencyStatus.PERMANENT_RESIDENT ||
+        residency === ResidencyStatus.NON_PERMANENT_EAD
+      );
+  }
+}
+
+/** True when the borrower class can use the ITIN program at all. */
+export function residencyAllowsItin(residency: ResidencyStatus | null | undefined): boolean {
+  return residency === ResidencyStatus.ITIN || residency == null || residency === ResidencyStatus.UNKNOWN;
+}
+
+/** True when the borrower class can use foreign-national programs. */
+export function residencyAllowsForeignNational(
+  residency: ResidencyStatus | null | undefined,
+): boolean {
+  return (
+    residency === ResidencyStatus.FOREIGN_NATIONAL ||
+    residency === ResidencyStatus.NON_PERMANENT_NO_EAD
+  );
+}
+
+/**
+ * Determine which programs the inputs are plausibly eligible for.
+ * Order matters: strongest/most-specific fit first (drives pricing + advice).
+ */
 export function determineEligiblePrograms(i: EngineInputs, credit: CreditProfile): LoanType[] {
   const eligible: LoanType[] = [];
   const fico = credit.fico;
+  const residency = i.residencyStatus;
 
   // Non-warrantable condos are excluded from ALL agency programs (Fannie,
   // Freddie, FHA, VA, USDA) — only non-QM/conventional-non-warrantable paths
   // remain (stress-test P1, PROP-01: the engine previously recommended
   // conventional for a building no agency lender would finance).
   const warrantable = i.propertyType !== PropertyType.CONDO_NONWARRANTABLE;
+  const price = i.targetPurchasePrice ?? 0;
+  const dpPct = price > 0 ? (i.downPaymentAvailable / price) * 100 : 0;
 
-  if (warrantable && fico >= (PROGRAM_MIN_FICO.conventional_conf ?? 620) && credit.waitingClear && i.propertyUse === PropertyUse.PRIMARY) {
+  // ---- Conventional family -------------------------------------------------
+  if (
+    warrantable &&
+    residencyAllowsAgency(residency, "conventional") &&
+    fico >= (PROGRAM_MIN_FICO.conventional_conf ?? 620) &&
+    credit.waitingClear &&
+    i.propertyUse === PropertyUse.PRIMARY
+  ) {
     eligible.push(LoanType.CONVENTIONAL_CONF);
+    // HomeReady/Home Possible: 3% down affordable tier with income limits
+    // (Catalog A2/A3) — surfaced when the AMI flag is set or plausibly true
+    // for a thin-down buyer; MLO verifies AMI at quote time.
+    if (i.incomeAtOrBelow80Ami === true && dpPct >= 3 && dpPct < 5) {
+      eligible.push(LoanType.HOME_READY);
+    }
   }
-  if (warrantable && fico >= (PROGRAM_MIN_FICO.conventional_jumbo ?? 700) && credit.waitingClear && (i.propertyUse === PropertyUse.PRIMARY || i.propertyUse === PropertyUse.SECOND_HOME)) {
+  if (
+    warrantable &&
+    residencyAllowsAgency(residency, "conventional") &&
+    fico >= (PROGRAM_MIN_FICO.conventional_jumbo ?? 700) &&
+    credit.waitingClear &&
+    (i.propertyUse === PropertyUse.PRIMARY || i.propertyUse === PropertyUse.SECOND_HOME)
+  ) {
     eligible.push(LoanType.CONVENTIONAL_JUMBO);
   }
-  if (warrantable && fico >= (PROGRAM_MIN_FICO.fha ?? 580) && credit.waitingClear && i.propertyUse === PropertyUse.PRIMARY) {
-    eligible.push(LoanType.FHA);
+
+  // ---- FHA family (residency-hard-gated) -----------------------------------
+  if (residencyAllowsAgency(residency, "fha") && warrantable && credit.waitingClear && i.propertyUse === PropertyUse.PRIMARY) {
+    if (fico >= (PROGRAM_MIN_FICO.fha ?? 580)) {
+      eligible.push(LoanType.FHA);
+      // FHA + DPA second (Catalog B1/C8): 3.5% covered by assistance when the
+      // borrower is first-time (most DPA programs) — Chenoa/HFA framing.
+      if (i.isFirstTimeBuyer === true && dpPct < 3.5) {
+        eligible.push(LoanType.DPA_ASSISTED_FHA);
+      }
+    }
+    // FHA 500-579 with 10% down (stress-test P3, CREDIT-01): the only standard
+    // path below 580 — kept out of the generic FHA gate above, which requires
+    // 580 for 3.5% down.
+    if (fico >= 500 && fico < 580 && dpPct >= 10) {
+      eligible.push(LoanType.FHA);
+    }
   }
-  if (warrantable && i.loanType === LoanType.VA && fico >= 620 && credit.waitingClear) {
+
+  // ---- VA (veteran status + residency) --------------------------------------
+  if (
+    i.isVeteran === true &&
+    i.loanType === LoanType.VA &&
+    fico >= 620 &&
+    credit.waitingClear &&
+    residencyAllowsAgency(residency, "va")
+  ) {
     eligible.push(LoanType.VA);
   }
-  // USDA rural gate (stress-test P2): location matters as much as FICO.
-  if (warrantable && i.loanType === LoanType.USDA && fico >= (PROGRAM_MIN_FICO.usda ?? 640) && credit.waitingClear && i.isRuralArea !== "no") {
+
+  // ---- USDA (rural + residency/EAD codes) ------------------------------------
+  if (
+    warrantable &&
+    residencyAllowsAgency(residency, "usda") &&
+    i.loanType === LoanType.USDA &&
+    fico >= (PROGRAM_MIN_FICO.usda ?? 640) &&
+    credit.waitingClear &&
+    i.isRuralArea !== "no"
+  ) {
     eligible.push(LoanType.USDA);
   }
 
-  // FHA 500-579 with 10% down (stress-test P3, CREDIT-01): the only standard
+  // ---- Section 184 (tribal members; any land status incl. trust land) -------
+  if (i.isTribalMember === true && fico >= 500 && credit.waitingClear) {
+    eligible.push(LoanType.SECTION_184);
+  }
+
+  // ---- FHA 500-579 with 10% down (stress-test P3, CREDIT-01): the only standard
   // path below 580 — kept out of the generic FHA gate above, which requires
   // 580 for 3.5% down.
-  if (warrantable && fico >= 500 && fico < 580 && i.propertyUse === PropertyUse.PRIMARY && credit.waitingClear) {
-    const dpPct = i.targetPurchasePrice ? (i.downPaymentAvailable / i.targetPurchasePrice) * 100 : 0;
-    if (dpPct >= 10) {
-      eligible.push(LoanType.FHA);
+  // (handled above inside the FHA block)
+
+  // ---- Renovation & construction (Catalog I) ---------------------------------
+  // Surface the renovation family when the purchase path includes repair
+  // scope (borrower-side flag arrives with the property story); construction
+  // one-time-close applies to any program-eligible buyer building new.
+  // These inherit the residency gates of their base program (FHA/conv).
+  if (
+    eligible.includes(LoanType.FHA) ||
+    eligible.includes(LoanType.CONVENTIONAL_CONF) ||
+    eligible.includes(LoanType.CONVENTIONAL_JUMBO)
+  ) {
+    // Surfaced as alternates; the MLO/MCU sorts which product fits the job.
+    // Kept behind explicit purpose choice to avoid noise on vanilla purchases.
+    if (i.loanPurpose === ("renovation" as never)) eligible.push(LoanType.RENOVATION);
+    if (i.loanPurpose === ("construction" as never)) eligible.push(LoanType.CONSTRUCTION_OTC);
+  }
+
+  // ---- Physician program (Catalog L1) ----------------------------------------
+  if (
+    i.isMedicalProfessional === true &&
+    fico >= 680 &&
+    credit.waitingClear &&
+    (i.propertyUse === PropertyUse.PRIMARY || i.propertyUse === PropertyUse.SECOND_HOME)
+  ) {
+    eligible.push(LoanType.PHYSICIAN);
+  }
+
+  // ---- Chattel manufactured (Catalog J4): land-lease communities -------------
+  if (
+    i.propertyType === PropertyType.MANUFACTURED &&
+    fico >= 600 &&
+    (i.manufacturedConcerns == null ||
+      !(i.manufacturedConcerns.leasedLand === false && i.manufacturedConcerns.noPermanentFoundation === true))
+  ) {
+    // Chattel is the fallback when land tenure fails the real-property tests.
+    if (i.manufacturedConcerns?.leasedLand === true || i.manufacturedConcerns?.noPermanentFoundation === true) {
+      eligible.push(LoanType.CHATTEL_MANUFACTURED);
     }
+  }
+
+  // ---- NACA (Catalog C1): counseling-based, no FICO floor --------------------
+  // Surfaced as a referral path for thin files / 0-down seekers; membership +
+  // counseling required, so it is never the priced recommendation.
+  if (i.propertyUse === PropertyUse.PRIMARY && (fico >= 500 || i.hasOnTimeHousingHistory12mo === true)) {
+    eligible.push(LoanType.NACA);
+  }
+
+  // ---- Bridge / hard money (Catalog G): MLO-referral flag only ---------------
+  // Surfaced when conventional capacity is clearly out of reach and the
+  // borrower has significant equity or an investor profile. Educational only.
+  if (
+    (fico < 580 || !credit.waitingClear) &&
+    i.propertyUse === PropertyUse.INVESTMENT
+  ) {
+    eligible.push(LoanType.BRIDGE_HARD_MONEY);
   }
 
   return eligible.length > 0 ? eligible : [LoanType.UNKNOWN];
@@ -63,6 +246,7 @@ export function priceProgram(i: EngineInputs, eligible: LoanType[]): LoanType {
 export function recommendProgram(eligible: LoanType[], i: EngineInputs): LoanType | null {
   if (eligible.length === 0 || eligible[0] === LoanType.UNKNOWN) return null;
   if (eligible.includes(LoanType.VA)) return LoanType.VA;
+  if (eligible.includes(LoanType.SECTION_184)) return LoanType.SECTION_184;
   if (eligible.includes(LoanType.FHA) && i.downPaymentAvailable < (i.targetPurchasePrice ?? 0) * 0.05) {
     return LoanType.FHA;
   }
@@ -87,6 +271,13 @@ export function assumedRate(program: LoanType, fico: number, ltvPct: number, ter
   if (ltvPct > 95) rate += 0.25;
   else if (ltvPct > 90) rate += 0.1;
 
+  // Non-QM-style add-ons for programs priced off the conventional sheet.
+  if (program === LoanType.PHYSICIAN) rate -= 0.1; // near-agency pricing
+  if (program === LoanType.CHATTEL_MANUFACTURED) rate += 1.75; // chattel premium
+  if (program === LoanType.BRIDGE_HARD_MONEY) rate += 5.5; // asset-based money
+  if (program === LoanType.FOREIGN_NATIONAL) rate += 1.5;
+  if (program === LoanType.FN_DSCR) rate += 1.25;
+
   return Math.round(rate * 1000) / 1000;
 }
 
@@ -97,16 +288,19 @@ export function mortgageInsuranceAnnual(
   ltvPct: number,
   fico: number,
 ): number {
-  if (program === LoanType.CONVENTIONAL_CONF) {
+  if (program === LoanType.CONVENTIONAL_CONF || program === LoanType.HOME_READY) {
     if (ltvPct <= 80) return 0;
     const rate = conventionalPmiRate(fico, ltvPct);
     return loanAmount * (rate / 100);
   }
-  if (program === LoanType.FHA) {
+  if (program === LoanType.FHA || program === LoanType.DPA_ASSISTED_FHA) {
     return loanAmount * ((ltvPct > 90 ? FHA_ANNUAL_MIP_GT90 : FHA_ANNUAL_MIP_LTE90) / 100);
   }
   if (program === LoanType.VA) return 0; // one-time funding fee, not annual MI
   if (program === LoanType.USDA) return loanAmount * (USDA_ANNUAL_GUARANTEE_PCT / 100);
+  if (program === LoanType.SECTION_184) return loanAmount * (0.015 / 100) * 100; // 1.5% guarantee fee annualized small
+  if (program === LoanType.NACA) return 0; // no PMI by design
+  if (program === LoanType.PHYSICIAN) return 0; // lender-paid/no-MI structure
   return 0;
 }
 
@@ -126,5 +320,21 @@ function conventionalPmiRate(fico: number, ltvPct: number): number {
 
 /** Minimum down-payment percent for a program (used by obstacle detection). */
 export function minDownPctFor(program: LoanType): number {
-  return MIN_DOWN_PCT[program] ?? 3.5;
+  switch (program) {
+    case LoanType.VA:
+    case LoanType.USDA:
+    case LoanType.NACA:
+    case LoanType.SECTION_184:
+      return 0;
+    case LoanType.PHYSICIAN:
+      return 0; // 0-5% by lender; obstacle-free floor
+    case LoanType.HOME_READY:
+      return 3;
+    case LoanType.DPA_ASSISTED_FHA:
+      return 0; // DPA covers the 3.5%
+    case LoanType.CHATTEL_MANUFACTURED:
+      return 5;
+    default:
+      return MIN_DOWN_PCT[program] ?? 3.5;
+  }
 }

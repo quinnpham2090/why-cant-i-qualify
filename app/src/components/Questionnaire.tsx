@@ -14,6 +14,7 @@ import {
   LoanType,
   PropertyType,
   PropertyUse,
+  ResidencyStatus,
 } from "@/engine/types";
 import type { DiagnosticResult, EngineInputs } from "@/engine/types";
 import { ResultsView } from "@/components/ResultsView";
@@ -81,6 +82,12 @@ export function Questionnaire() {
   // Form state
   const [loanPurpose, setLoanPurpose] = useState<LoanPurpose>(LoanPurpose.PURCHASE);
   const [propertyUse, setPropertyUse] = useState<PropertyUse>(PropertyUse.PRIMARY);
+  // Catalog §0: residency gates agency programs (FHA blocked for NPR, etc.)
+  const [residencyStatus, setResidencyStatus] = useState<ResidencyStatus>(ResidencyStatus.US_CITIZEN);
+  const [isTribalMember, setIsTribalMember] = useState<"no" | "yes" | "unsure">("unsure");
+  const [isVeteran, setIsVeteran] = useState<"no" | "yes" | "unsure">("unsure");
+  const [isMedicalProfessional, setIsMedicalProfessional] = useState<"no" | "yes">("no");
+  const [incomeAtOrBelow80Ami, setIncomeAtOrBelow80Ami] = useState<"unsure" | "yes" | "no">("unsure");
   const [loanType, setLoanType] = useState<LoanType>(LoanType.UNKNOWN);
   const [income, setIncome] = useState<string>("");
   const [incomeType, setIncomeType] = useState<IncomeType>(IncomeType.W2);
@@ -160,6 +167,7 @@ export function Questionnaire() {
   const coarseMeta = () => ({
     loan_purpose: loanPurpose,
     property_use: propertyUse,
+    residency: residencyStatus,
     income_type: incomeType,
     income_doc: incomeDoc,
     credit_event: creditEvent,
@@ -325,6 +333,11 @@ export function Questionnaire() {
       loanPurpose,
       propertyUse,
       loanType,
+      residencyStatus,
+      isTribalMember: isTribalMember === "yes",
+      isVeteran: isVeteran === "yes",
+      isMedicalProfessional: isMedicalProfessional === "yes",
+      incomeAtOrBelow80Ami: incomeAtOrBelow80Ami === "yes" ? true : incomeAtOrBelow80Ami === "no" ? false : undefined,
       grossMonthlyIncome: num(income),
       incomeType,
       incomeDocumentation: incomeDoc,
@@ -488,6 +501,95 @@ export function Questionnaire() {
                 <option value={PropertyUse.PRIMARY}>Primary residence</option>
                 <option value={PropertyUse.SECOND_HOME}>Second home</option>
                 <option value={PropertyUse.INVESTMENT}>Investment property</option>
+              </select>
+            </Field>
+            <Field
+              id="q-residency"
+              label="What is your residency or immigration status?"
+              help="This determines which loan programs you can use — for example FHA is limited to citizens and permanent residents. Nothing is shared with anyone."
+            >
+              <select
+                id="q-residency"
+                className={inputCls}
+                value={residencyStatus}
+                onChange={(e) => setResidencyStatus(e.target.value as ResidencyStatus)}
+              >
+                <option value={ResidencyStatus.US_CITIZEN}>U.S. citizen</option>
+                <option value={ResidencyStatus.PERMANENT_RESIDENT}>Permanent resident (green card)</option>
+                <option value={ResidencyStatus.NON_PERMANENT_EAD}>Work visa / permit (H-1B, L-1, TN, DACA with work permit)</option>
+                <option value={ResidencyStatus.NON_PERMANENT_NO_EAD}>Visa without work authorization</option>
+                <option value={ResidencyStatus.ITIN}>I file taxes with an ITIN (no Social Security number)</option>
+                <option value={ResidencyStatus.FOREIGN_NATIONAL}>I live outside the U.S. (foreign national)</option>
+                <option value={ResidencyStatus.UNKNOWN}>Prefer not to say</option>
+              </select>
+            </Field>
+            {residencyStatus !== ResidencyStatus.US_CITIZEN && residencyStatus !== ResidencyStatus.UNKNOWN && (
+              <Field
+                id="q-veteran"
+                label="Have you served in the U.S. military? (veterans and surviving spouses)"
+                help="VA loans are earned through military service, regardless of citizenship status."
+              >
+                <select
+                  id="q-veteran"
+                  className={inputCls}
+                  value={isVeteran}
+                  onChange={(e) => setIsVeteran(e.target.value as "no" | "yes" | "unsure")}
+                >
+                  <option value="unsure">Prefer not to say</option>
+                  <option value="no">No</option>
+                  <option value="yes">Yes</option>
+                </select>
+              </Field>
+            )}
+            {(residencyStatus === ResidencyStatus.US_CITIZEN ||
+              residencyStatus === ResidencyStatus.PERMANENT_RESIDENT ||
+              residencyStatus === ResidencyStatus.NON_PERMANENT_EAD) && (
+              <Field
+                id="q-tribal"
+                label="Are you an enrolled member of a federally recognized tribe?"
+                help="Section 184 loans offer low down payments for tribal members, on or off tribal land."
+              >
+                <select
+                  id="q-tribal"
+                  className={inputCls}
+                  value={isTribalMember}
+                  onChange={(e) => setIsTribalMember(e.target.value as "no" | "yes" | "unsure")}
+                >
+                  <option value="unsure">Not sure</option>
+                  <option value="no">No</option>
+                  <option value="yes">Yes</option>
+                </select>
+              </Field>
+            )}
+            <Field
+              id="q-medical"
+              label="Are you a licensed medical professional (MD, DO, DDS, CRNA, PA, PharmD)?"
+              help="Doctor loans offer little or no down payment before your income fully ramps up."
+            >
+              <select
+                id="q-medical"
+                className={inputCls}
+                value={isMedicalProfessional}
+                onChange={(e) => setIsMedicalProfessional(e.target.value as "no" | "yes")}
+              >
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+              </select>
+            </Field>
+            <Field
+              id="q-ami"
+              label="Is your total household income at or below the area average for your county?"
+              help="Some 3%-down programs (HomeReady, Home Possible) are reserved for moderate incomes. Not sure is fine — the loan officer can confirm."
+            >
+              <select
+                id="q-ami"
+                className={inputCls}
+                value={incomeAtOrBelow80Ami}
+                onChange={(e) => setIncomeAtOrBelow80Ami(e.target.value as "unsure" | "yes" | "no")}
+              >
+                <option value="unsure">Not sure</option>
+                <option value="yes">Yes, at or below the area average</option>
+                <option value="no">No, above it</option>
               </select>
             </Field>
             <Field id="q-loan-type" label="Loan type you're considering" help="Choose &ldquo;Not sure&rdquo; and we'll suggest options.">

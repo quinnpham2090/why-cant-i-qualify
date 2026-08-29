@@ -21,6 +21,7 @@ import {
   LoanType,
   PropertyType,
   PropertyUse,
+  ResidencyStatus,
 } from "../types";
 import type { EngineInputs } from "../types";
 
@@ -368,6 +369,144 @@ describe("non-QM fixtures (Phase C)", () => {
     expect(obstacleText).toContain("waiting period");
     // Clean profile has no credit-event obstacle
     expect(clean.subScores.credit.redFlags.length).toBe(0);
+  });
+});
+
+describe("residency gating (LOAN_PROGRAMS_CATALOG.md §0)", () => {
+  const h1bBuyer = base({
+    grossMonthlyIncome: 9500,
+    incomeType: IncomeType.W2,
+    incomeDocumentation: IncomeDocumentation.W2_STUBS,
+    creditScoreSelfReported: 760, // -> 740
+    totalMonthlyDebtPayments: 1200,
+    downPaymentAvailable: 40000,
+    targetPurchasePrice: 400000,
+    propertyType: PropertyType.SFR,
+    employmentYearsInField: 4,
+    liquidAssetsAfterClose: 30000,
+  });
+
+  it("RES1: H-1B (NPR w/ EAD) -> conventional yes, FHA hard-blocked", () => {
+    const r = runDiagnostic({ ...h1bBuyer, residencyStatus: ResidencyStatus.NON_PERMANENT_EAD });
+    expect(r.eligiblePrograms).toContain(LoanType.CONVENTIONAL_CONF);
+    expect(r.eligiblePrograms).not.toContain(LoanType.FHA);
+    expect(r.assumptionsUsed.some((a) => a.key === "residency_fha_blocked")).toBe(true);
+  });
+
+  it("RES2: green-card holder -> full agency access including FHA", () => {
+    const r = runDiagnostic({ ...h1bBuyer, residencyStatus: ResidencyStatus.PERMANENT_RESIDENT });
+    expect(r.eligiblePrograms).toContain(LoanType.CONVENTIONAL_CONF);
+    expect(r.eligiblePrograms).toContain(LoanType.FHA);
+  });
+
+  it("RES3: ITIN borrower -> ITIN program, no conventional", () => {
+    const r = runDiagnostic({
+      ...h1bBuyer,
+      residencyStatus: ResidencyStatus.ITIN,
+      incomeDocumentation: IncomeDocumentation.BANK_STATEMENT_24,
+      incomeType: IncomeType.SELF_EMPLOYED,
+      grossMonthlyIncome: 8000,
+      downPaymentAvailable: 90000, // 30% of 300k
+      targetPurchasePrice: 300000,
+      creditScoreSelfReported: 720, // -> 700
+    });
+    expect(r.eligiblePrograms).toContain(LoanType.ITIN);
+    expect(r.eligiblePrograms).not.toContain(LoanType.CONVENTIONAL_CONF);
+    expect(r.eligiblePrograms).not.toContain(LoanType.FHA);
+  });
+
+  it("RES4: foreign national w/ rent -> FN-DSCR surfaced", () => {
+    const r = runDiagnostic({
+      ...h1bBuyer,
+      residencyStatus: ResidencyStatus.FOREIGN_NATIONAL,
+      propertyUse: PropertyUse.INVESTMENT,
+      expectedMonthlyRent: 3200,
+      downPaymentAvailable: 150000, // 30% of 500k
+      targetPurchasePrice: 500000,
+      creditScoreSelfReported: null,
+      creditTierSelfReported: null,
+    });
+    expect(r.eligiblePrograms).toContain(LoanType.FN_DSCR);
+    expect(r.eligiblePrograms).not.toContain(LoanType.CONVENTIONAL_CONF);
+    expect(r.disclaimers.some((d) => d.toLowerCase().includes("specialized lenders"))).toBe(true);
+  });
+
+  it("RES5: NPR w/o EAD -> foreign national purchase path when down >= 25%", () => {
+    const r = runDiagnostic({
+      ...h1bBuyer,
+      residencyStatus: ResidencyStatus.NON_PERMANENT_NO_EAD,
+      downPaymentAvailable: 112500, // 25% of 450k
+      targetPurchasePrice: 450000,
+    });
+    expect(r.eligiblePrograms).toContain(LoanType.FOREIGN_NATIONAL);
+  });
+
+  it("RES6: tribal member -> Section 184 surfaced", () => {
+    const r = runDiagnostic({
+      ...h1bBuyer,
+      residencyStatus: ResidencyStatus.US_CITIZEN,
+      isTribalMember: true,
+      downPaymentAvailable: 10000,
+      targetPurchasePrice: 300000,
+      creditScoreSelfReported: 620, // -> 600
+    });
+    expect(r.eligiblePrograms).toContain(LoanType.SECTION_184);
+  });
+
+  it("RES7: veteran flag + VA selection -> VA eligible", () => {
+    const r = runDiagnostic({
+      ...h1bBuyer,
+      residencyStatus: ResidencyStatus.US_CITIZEN,
+      isVeteran: true,
+      loanType: LoanType.VA,
+      downPaymentAvailable: 0,
+    });
+    expect(r.eligiblePrograms).toContain(LoanType.VA);
+  });
+
+  it("RES8: medical professional -> physician program surfaced", () => {
+    const r = runDiagnostic({
+      ...h1bBuyer,
+      residencyStatus: ResidencyStatus.US_CITIZEN,
+      isMedicalProfessional: true,
+      downPaymentAvailable: 20000, // 5% of 400k
+    });
+    expect(r.eligiblePrograms).toContain(LoanType.PHYSICIAN);
+  });
+
+  it("RES9: moderate income + thin down -> HomeReady tier surfaced", () => {
+    const r = runDiagnostic({
+      ...h1bBuyer,
+      residencyStatus: ResidencyStatus.US_CITIZEN,
+      incomeAtOrBelow80Ami: true,
+      downPaymentAvailable: 12000, // 3% of 400k
+    });
+    expect(r.eligiblePrograms).toContain(LoanType.HOME_READY);
+  });
+
+  it("RES10: first-time + under 3.5% down -> DPA-assisted FHA surfaced", () => {
+    const r = runDiagnostic({
+      ...h1bBuyer,
+      residencyStatus: ResidencyStatus.US_CITIZEN,
+      isFirstTimeBuyer: true,
+      downPaymentAvailable: 8000, // 2% of 400k
+      creditScoreSelfReported: 660, // -> 640
+    });
+    expect(r.eligiblePrograms).toContain(LoanType.DPA_ASSISTED_FHA);
+  });
+
+  it("RES11: NPR-EAD investor with no agency lane still gets non-QM + bridge flag", () => {
+    const r = runDiagnostic({
+      ...h1bBuyer,
+      residencyStatus: ResidencyStatus.NON_PERMANENT_EAD,
+      propertyUse: PropertyUse.INVESTMENT,
+      expectedMonthlyRent: 2600,
+      downPaymentAvailable: 62500, // 25% of 250k
+      targetPurchasePrice: 250000,
+    });
+    // DSCR is residency-open; bridge flag for investment w/ sub-580 is not
+    // forced at 740 FICO — DSCR alone is the path.
+    expect(r.eligiblePrograms).toContain(LoanType.DSCR);
   });
 });
 

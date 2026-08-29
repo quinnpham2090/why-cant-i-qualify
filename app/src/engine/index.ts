@@ -15,6 +15,8 @@ import {
 import {
   LoanType,
   PropertyType,
+  PropertyUse,
+  ResidencyStatus,
   type Assumption,
   type Confidence,
   type DiagnosticResult,
@@ -147,6 +149,35 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
   const agencyPrograms = determineEligiblePrograms(i, credit);
   const nonQm = determineNonQmPrograms(i, credit);
   assumptions.push(...nonQm.flatMap((n) => n.assumptions));
+
+  // Residency gating disclosures (Catalog §0): when a class loses agency
+  // lanes, say so plainly instead of letting programs silently vanish.
+  const residency = i.residencyStatus;
+  if (residency === ResidencyStatus.NON_PERMANENT_EAD || residency === ResidencyStatus.NON_PERMANENT_NO_EAD) {
+    const fhaWouldOtherwise =
+      credit.fico >= 580 && credit.waitingClear && i.propertyUse === PropertyUse.PRIMARY;
+    if (fhaWouldOtherwise) {
+      assumptions.push({
+        key: "residency_fha_blocked",
+        description:
+          "FHA loans are currently limited to citizens and permanent residents, so the estimate uses the loan types available to your status instead.",
+      });
+    }
+    if (residency === ResidencyStatus.NON_PERMANENT_EAD) {
+      assumptions.push({
+        key: "residency_document_note",
+        description:
+          "With a work visa, lenders will ask for your work-permit card, the visa notice of action, and your entry record, and they review how long your authorization remains valid.",
+      });
+    }
+  }
+  if (residency === ResidencyStatus.ITIN) {
+    assumptions.push({
+      key: "residency_itin_note",
+      description:
+        "The estimate reflects ITIN lending: larger down payments than standard loans, and credit can be documented through alternative or international reports.",
+    });
+  }
   const nonQmLoanTypes = nonQm.map((n) => n.loanType);
   const merged = [...agencyPrograms.filter((p) => p !== LoanType.UNKNOWN), ...nonQmLoanTypes];
   // Deduplicate while preserving order

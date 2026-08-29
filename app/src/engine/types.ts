@@ -28,6 +28,13 @@ export enum LoanType {
   FHA = "fha",
   VA = "va",
   USDA = "usda",
+  // Agency-adjacent affordable programs (LOAN_PROGRAMS_CATALOG.md A/C)
+  HOME_READY = "home_ready", // Fannie HomeReady / Freddie Home Possible (3% down, AMI-limited)
+  DPA_ASSISTED_FHA = "dpa_assisted_fha", // FHA + down-payment-assistance second (Chenoa/HFA)
+  MCC = "mcc", // Mortgage Credit Certificate stack (tax credit, not a lien)
+  // Renovation & construction (Catalog I)
+  RENOVATION = "renovation", // FHA 203k / HomeStyle / CHOICERenovation family
+  CONSTRUCTION_OTC = "construction_otc", // one-time-close construction-to-perm
   // Non-QM (non-agency) programs — see RESEARCH_NON_QM.md
   BANK_STATEMENT = "bank_statement",
   PANDL_ONLY = "pandl_only",
@@ -36,6 +43,15 @@ export enum LoanType {
   ITIN = "itin",
   NON_QM_JUMBO = "non_qm_jumbo",
   NON_WARRANTABLE = "non_warrantable",
+  // Foreign national / visa (Catalog E11/E12/F)
+  FOREIGN_NATIONAL = "foreign_national", // alt-doc purchase, no US FICO required
+  FN_DSCR = "fn_dscr", // investor DSCR for foreign nationals; no income verification
+  // Specialty (Catalog B10/J/L/M)
+  SECTION_184 = "section_184", // HUD Indian Home Loan Guarantee (tribal members)
+  CHATTEL_MANUFACTURED = "chattel_manufactured", // home-only loan, land-lease communities
+  PHYSICIAN = "physician", // doctor/professional portfolio program
+  NACA = "naca", // counseling-based 0-down/0-cost program (referral path)
+  BRIDGE_HARD_MONEY = "bridge_hard_money", // asset-based bridge (MLO referral flag only)
   UNKNOWN = "unknown",
 }
 
@@ -80,6 +96,27 @@ export enum PropertyType {
   TOWNHOME = "townhome",
   MANUFACTURED = "manufactured",
   MULTI_2_4 = "multi_2_4",
+  UNKNOWN = "unknown",
+}
+
+/**
+ * Borrower residency/immigration class (LOAN_PROGRAMS_CATALOG.md §0).
+ * Gates agency program eligibility — most importantly FHA, which HUD
+ * removed from ALL non-permanent residents (2025).
+ */
+export enum ResidencyStatus {
+  /** US citizen or US national. */
+  US_CITIZEN = "us_citizen",
+  /** Lawful permanent resident (green card holder). */
+  PERMANENT_RESIDENT = "permanent_resident",
+  /** Non-permanent resident WITH work authorization + SSN (H-1B, L-1, O-1, TN, E-2, asylum-pending w/ EAD, DACA w/ EAD). */
+  NON_PERMANENT_EAD = "non_permanent_ead",
+  /** Visa holder WITHOUT work authorization (B-1/B-2, F-1 without CPT/OPT). */
+  NON_PERMANENT_NO_EAD = "non_permanent_no_ead",
+  /** Files taxes with an ITIN; no SSN. */
+  ITIN = "itin",
+  /** Foreign national living abroad or transient; no US status. */
+  FOREIGN_NATIONAL = "foreign_national",
   UNKNOWN = "unknown",
 }
 
@@ -166,6 +203,18 @@ export interface EngineInputs {
   // Strongly recommended
   estimatedHomeValue?: number | null; // refi
   state?: string | null; // "CA", "TX", ... V1 geofenced to FL in the UI layer
+  /** Residency/immigration class — gates agency + non-QM program surfaces (Catalog §0). */
+  residencyStatus?: ResidencyStatus | null;
+  /** Enrolled member of a federally recognized tribe (Section 184 / NADL). */
+  isTribalMember?: boolean;
+  /** Eligible veteran / active duty / surviving spouse (VA programs). */
+  isVeteran?: boolean;
+  /** Licensed medical professional eligible for physician programs (MD/DO/DDS/CRNA/PA/PharmD). */
+  isMedicalProfessional?: boolean;
+  /** Household income at or below 80% of Area Median Income (HomeReady/Home Possible). */
+  incomeAtOrBelow80Ami?: boolean;
+  /** First-time homebuyer (or no ownership in past 3 years). */
+  isFirstTimeBuyer?: boolean;
   propertyType?: PropertyType;
   creditEvent?: CreditEvent;
   yearsSinceCreditEvent?: number | null;
@@ -173,7 +222,6 @@ export interface EngineInputs {
   employmentYearsInField?: number | null;
   hasHoa?: boolean;
   monthlyHoaFee?: number | null;
-  isFirstTimeBuyer?: boolean;
   hasGiftFundsDocumented?: boolean;
   giftFundsAmount?: number | null;
   hasUnexplainedLargeDeposits?: boolean;

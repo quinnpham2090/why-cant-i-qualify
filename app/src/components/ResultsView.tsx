@@ -187,7 +187,22 @@ const NON_QM_LABELS: Partial<Record<LoanType, string>> = {
   [LoanType.ITIN]: "ITIN borrower program",
   [LoanType.NON_QM_JUMBO]: "Expanded jumbo",
   [LoanType.NON_WARRANTABLE]: "Non-warrantable condo",
+  [LoanType.FOREIGN_NATIONAL]: "Foreign national program",
+  [LoanType.FN_DSCR]: "Foreign national investor (rent-based)",
+  [LoanType.SECTION_184]: "Section 184 (tribal home loan)",
+  [LoanType.CHATTEL_MANUFACTURED]: "Home-only (chattel) manufactured loan",
+  [LoanType.PHYSICIAN]: "Medical professional program",
+  [LoanType.NACA]: "NACA program (via counseling)",
+  [LoanType.BRIDGE_HARD_MONEY]: "Bridge / asset-based loan (short-term)",
 };
+
+const AGENCY_EXTRA_LABELS: Partial<Record<LoanType, string>> = {
+  [LoanType.HOME_READY]: "Conventional affordable (HomeReady / Home Possible)",
+  [LoanType.DPA_ASSISTED_FHA]: "FHA with down-payment assistance",
+  [LoanType.MCC]: "With mortgage tax credit (MCC)",
+  [LoanType.RENOVATION]: "Renovation loan (203k / HomeStyle)",
+  [LoanType.CONSTRUCTION_OTC]: "One-time-close construction",
+}
 
 const NON_QM_SET = new Set<string>(Object.keys(NON_QM_LABELS));
 
@@ -198,6 +213,7 @@ const PROGRAM_LABELS: Partial<Record<LoanType, string>> = {
   [LoanType.VA]: "VA",
   [LoanType.USDA]: "USDA",
   ...NON_QM_LABELS,
+  ...AGENCY_EXTRA_LABELS,
 };
 
 export function ResultsView({ result, inputs }: { result: DiagnosticResult; inputs: EngineInputs }) {

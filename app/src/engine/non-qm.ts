@@ -10,10 +10,12 @@ import {
   LoanType,
   PropertyType,
   PropertyUse,
+  ResidencyStatus,
   type EngineInputs,
   type Assumption,
 } from "./types";
 import type { CreditProfile } from "./credit";
+import { residencyAllowsForeignNational, residencyAllowsItin } from "./programs";
 
 /** Monthly income implied by liquid assets over the program divisor. */
 export function assetDepletionMonthlyIncome(liquidAssetsTotal: number, divisorMonths: number): number {
@@ -42,9 +44,10 @@ function documentationSupports(
     case "asset_qualifier":
       return doc === IncomeDocumentation.ASSET_DEPLETION || doc === IncomeDocumentation.NO_DOC || doc === IncomeDocumentation.CASH_UNDOCUMENTED;
     case "itin":
-      // Only surfaced via the explicit ITIN opt-in (RESEARCH_NON_QM.md §5) —
-      // never inferred from documentation type (stress-test P2 fix).
-      return i.isItinBorrower === true;
+      // Surfaced only for the ITIN residency class (Catalog §0/E8) — the
+      // class IS the explicit opt-in; never inferred from documentation type.
+      // (Keeps the legacy isItinBorrower flag working as an alias.)
+      return i.isItinBorrower === true || i.residencyStatus === ResidencyStatus.ITIN;
     case "non_qm_jumbo":
       return doc !== IncomeDocumentation.UNKNOWN;
     case "non_warrantable":
@@ -63,6 +66,50 @@ export interface NonQmEligibility {
 }
 
 /**
+ * Foreign-national program eligibility (Catalog E11/E12/F): available to
+ * foreign nationals and visa holders without work authorization — the
+ * classes agency lending cannot reach. No US FICO requirement.
+ */
+function foreignNationalEligible(
+  i: EngineInputs,
+  credit: CreditProfile,
+  key: string,
+): { ok: boolean; qualifyingIncome: number; assumptions: Assumption[] } {
+  const assumptions: Assumption[] = [];
+  const residency = i.residencyStatus;
+  if (!residencyAllowsForeignNational(residency)) return { ok: false, qualifyingIncome: 0, assumptions };
+
+  const price = i.targetPurchasePrice ?? 0;
+  const dpPct = price > 0 ? (i.downPaymentAvailable / price) * 100 : 0;
+
+  if (key === "foreign_national") {
+    // Alt-doc purchase: 25-30% down, verifiable foreign/US income or assets.
+    if (dpPct < 25) return { ok: false, qualifyingIncome: 0, assumptions };
+    const income = i.grossMonthlyIncome > 0 ? i.grossMonthlyIncome : 0;
+    assumptions.push({
+      key: "foreign_national_program",
+      description:
+        "Foreign-national programs lend without US credit history, typically at 65-75% of the price with 12 months of reserves. Income or assets are documented through international statements.",
+    });
+    return { ok: true, qualifyingIncome: income, assumptions };
+  }
+
+  if (key === "fn_dscr") {
+    // Investor DSCR: no income verification at all — rent drives it.
+    const rent = i.expectedMonthlyRent ?? 0;
+    if (rent <= 0) return { ok: false, qualifyingIncome: 0, assumptions };
+    assumptions.push({
+      key: "foreign_national_dscr",
+      description:
+        "Foreign-national investor programs qualify on the rent a property produces rather than personal income, and commonly close in an LLC name.",
+    });
+    return { ok: true, qualifyingIncome: 0, assumptions };
+  }
+
+  return { ok: false, qualifyingIncome: 0, assumptions };
+}
+
+/**
  * Evaluate every non-QM program against the inputs and return those whose
  * published floors are plausibly met. Pure function.
  */
@@ -73,6 +120,7 @@ export function determineNonQmPrograms(
   const out: NonQmEligibility[] = [];
   const fico = credit.fico;
   const doc = i.incomeDocumentation ?? IncomeDocumentation.UNKNOWN;
+  const residency = i.residencyStatus;
 
   for (const key of Object.keys(NON_QM_PROGRAMS)) {
     const p = NON_QM_PROGRAMS[key];
@@ -88,6 +136,10 @@ export function determineNonQmPrograms(
     if (key === "dscr" && i.propertyUse !== PropertyUse.INVESTMENT) continue;
     if (key === "asset_qualifier" && i.propertyUse !== PropertyUse.PRIMARY && i.propertyUse !== PropertyUse.SECOND_HOME) continue;
     if (key === "bank_statement" && i.propertyUse === PropertyUse.INVESTMENT) continue;
+
+    // Residency gates (Catalog §O): ITIN programs need the ITIN class;
+    // US-citizen/PR/NPR-EAD borrowers use the standard non-QM menu.
+    if (key === "itin" && !residencyAllowsItin(residency)) continue;
 
     let qualifyingIncome = 0;
 
@@ -152,6 +204,29 @@ export function determineNonQmPrograms(
     out.push({ program: p, loanType: programToLoanType(key), qualifyingIncome, assumptions });
   }
 
+  // Foreign-national programs (outside NON_QM_PROGRAMS table — residency-driven)
+  for (const key of ["foreign_national", "fn_dscr"] as const) {
+    const fn = foreignNationalEligible(i, credit, key);
+    if (!fn.ok) continue;
+    out.push({
+      program: {
+        program: key,
+        minFico: 0, // no US FICO required
+        maxLtvPct: key === "fn_dscr" ? 75 : 70,
+        minDownPct: key === "fn_dscr" ? 25 : 30,
+        reservesMonths: 12,
+        rateAddOnPct: key === "fn_dscr" ? 1.25 : 1.5,
+        maxBackEndDtiPct: key === "fn_dscr" ? null : 45,
+        lastVerified: "2026-08-29",
+        verify: false,
+        source: "LOAN_PROGRAMS_CATALOG.md E11/E12 (live research 2026-08-29)",
+      },
+      loanType: key === "fn_dscr" ? LoanType.FN_DSCR : LoanType.FOREIGN_NATIONAL,
+      qualifyingIncome: fn.qualifyingIncome,
+      assumptions: fn.assumptions,
+    });
+  }
+
   return out;
 }
 
@@ -164,6 +239,8 @@ function programToLoanType(key: string): LoanType {
     case "itin": return LoanType.ITIN;
     case "non_qm_jumbo": return LoanType.NON_QM_JUMBO;
     case "non_warrantable": return LoanType.NON_WARRANTABLE;
+    case "foreign_national": return LoanType.FOREIGN_NATIONAL;
+    case "fn_dscr": return LoanType.FN_DSCR;
     default: return LoanType.UNKNOWN;
   }
 }
@@ -186,5 +263,9 @@ export function isNonQm(program: LoanType): boolean {
     LoanType.ITIN,
     LoanType.NON_QM_JUMBO,
     LoanType.NON_WARRANTABLE,
+    LoanType.FOREIGN_NATIONAL,
+    LoanType.FN_DSCR,
+    LoanType.CHATTEL_MANUFACTURED,
+    LoanType.BRIDGE_HARD_MONEY,
   ].includes(program);
 }
