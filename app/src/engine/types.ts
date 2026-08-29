@@ -122,6 +122,12 @@ export interface Debt {
   fullyAmortPayment?: number;
   courtOrderedAmount?: number;
   monthsBehind?: number;
+  /**
+   * Support payments (alimony/child support): months until the obligation
+   * automatically terminates. FNMA B3-6-05 excludes support terminating
+   * within 10 months of closing from the DTI ratio (stress-test P1 fix).
+   */
+  monthsUntilTermination?: number;
   otherPartyOnTime12mo?: boolean;
 }
 
@@ -134,6 +140,16 @@ export interface EngineInputs {
   incomeType: IncomeType;
   /** How income is documented (bank statements, P&L, 1099, cash, etc.). */
   incomeDocumentation?: IncomeDocumentation;
+  /** Trend over the past two years (stress-test P1): down → lower recent level. */
+  incomeTrend?: "up" | "flat" | "down" | "unknown";
+  /**
+   * Explicit user opt-in that they will file taxes with an ITIN (no SSN).
+   * ITIN programs are NEVER surfaced without this flag (RESEARCH_NON_QM.md §5:
+   * surfaced only from an explicit user path, never inferred).
+   */
+  isItinBorrower?: boolean;
+  /** Side-business average net monthly income per tax returns (negative = loss). */
+  sideBusinessNetMonthlyIncome?: number | null;
   /** Estimated share (0–100) of income paid in cash and not on tax returns. */
   cashIncomePortionPct?: number | null;
   /** Monthly gross rent the property is expected to produce (DSCR / investors). */

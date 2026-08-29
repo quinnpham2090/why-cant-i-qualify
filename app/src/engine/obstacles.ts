@@ -1,6 +1,6 @@
 /** Obstacle + strength identification (rule-engine-spec §4.10, thresholds T20). */
 
-import { LoanType, PropertyType, IncomeType, type EngineInputs, type Obstacle, type Strength, type SubScore } from "./types";
+import { LoanType, PropertyType, PropertyUse, IncomeType, type EngineInputs, type Obstacle, type Strength, type SubScore } from "./types";
 import type { CreditProfile } from "./credit";
 import { minDownPctFor } from "./programs";
 
@@ -9,6 +9,7 @@ export function identifyObstacles(
   sub: Record<string, SubScore>,
   credit: CreditProfile,
   eligiblePrograms: LoanType[],
+  reservesMonths?: number | null,
 ): { primary: Obstacle | null; secondary: Obstacle[]; strengths: Strength[] } {
   const obstacles: Obstacle[] = [];
   let rank = 1;
@@ -83,11 +84,70 @@ export function identifyObstacles(
     });
   }
 
-  // 8. Negative reserves
+  // 7b. Non-warrantable condo: agency financing is unavailable regardless of
+  // the borrower's profile (stress-test P1, PROP-01). Surface as its own
+  // obstacle so the building — not a misleading DTI number — is the headline.
+  if (i.propertyType === PropertyType.CONDO_NONWARRANTABLE) {
+    obstacles.push({
+      rank: rank++, category: "property", severity: "primary",
+      description:
+        "The condo building appears to be non-warrantable (for example pending litigation, high investor ownership, or delinquent association dues), which excludes most standard loan programs; specialized lenders handle these buildings.",
+      fixHorizon: "out_of_user_control",
+    });
+  }
+
+  // 7c. Manufactured-home eligibility walls (stress-test P1, PROP-02): land
+  // tenure, foundation, and unit width decide eligibility, not credit.
+  if (i.propertyType === PropertyType.MANUFACTURED) {
+    obstacles.push({
+      rank: rank++, category: "property", severity: "primary",
+      description:
+        "Manufactured homes must sit on owned land with a permanent foundation and typically must be a multi-section (double-wide or larger) home built after 1976 to use most standard loan programs.",
+      fixHorizon: "out_of_user_control",
+    });
+  }
+
+  // 7d. Investor multi-family down-payment floor (stress-test P1, PROP-03):
+  // 2-4 unit investment properties carry a 20-25% minimum, not the 3-5%
+  // owner-occupied minimum the generic check uses.
+  if (
+    i.propertyUse === PropertyUse.INVESTMENT &&
+    i.propertyType === PropertyType.MULTI_2_4 &&
+    i.targetPurchasePrice != null &&
+    i.targetPurchasePrice > 0
+  ) {
+    const dpPct = (i.downPaymentAvailable / i.targetPurchasePrice) * 100;
+    if (dpPct < 20) {
+      obstacles.push({
+        rank: rank++, category: "cash", severity: "primary",
+        description:
+          "Investment properties with 2-4 units typically require a down payment of 20% or more; the amount entered is below that level.",
+        fixHorizon: "0-3 months",
+      });
+    }
+  }
+
+  // 8. Negative or depleted reserves (stress-test calibration: CASH-08 —
+  // wiping savings on the down payment scored strong_fit when the reserve
+  // obstacle only fired below zero).
   if ((sub.cash?.score ?? 100) < 0 || (sub.cash?.redFlags ?? []).some((f) => f.includes("negative"))) {
     obstacles.push({
       rank: rank++, category: "cash", severity: "primary",
       description: "Liquid assets after closing may be negative.",
+      fixHorizon: "0-3 months",
+    });
+  } else if (i.liquidAssetsAfterClose != null && i.liquidAssetsAfterClose < 1) {
+    obstacles.push({
+      rank: rank++, category: "cash", severity: "primary",
+      description:
+        "You may have little or nothing left in savings after closing; lenders typically want at least one to six months of payments in reserve after the loan closes.",
+      fixHorizon: "0-3 months",
+    });
+  } else if (i.liquidAssetsAfterClose != null && reservesMonths != null && reservesMonths < 1) {
+    obstacles.push({
+      rank: rank++, category: "cash", severity: "secondary",
+      description:
+        "Savings after closing cover less than one month of payments; building toward two to six months of reserves would strengthen the file.",
       fixHorizon: "0-3 months",
     });
   }

@@ -30,6 +30,7 @@ export function dscrFromRent(expectedMonthlyRent: number, monthlyPitia: number):
 function documentationSupports(
   doc: IncomeDocumentation | undefined,
   program: string,
+  i: EngineInputs,
 ): boolean {
   switch (program) {
     case "bank_statement":
@@ -41,7 +42,9 @@ function documentationSupports(
     case "asset_qualifier":
       return doc === IncomeDocumentation.ASSET_DEPLETION || doc === IncomeDocumentation.NO_DOC || doc === IncomeDocumentation.CASH_UNDOCUMENTED;
     case "itin":
-      return true; // surfaced from explicit user path only
+      // Only surfaced via the explicit ITIN opt-in (RESEARCH_NON_QM.md §5) —
+      // never inferred from documentation type (stress-test P2 fix).
+      return i.isItinBorrower === true;
     case "non_qm_jumbo":
       return doc !== IncomeDocumentation.UNKNOWN;
     case "non_warrantable":
@@ -73,7 +76,7 @@ export function determineNonQmPrograms(
 
   for (const key of Object.keys(NON_QM_PROGRAMS)) {
     const p = NON_QM_PROGRAMS[key];
-    if (!documentationSupports(doc, key)) continue;
+    if (!documentationSupports(doc, key, i)) continue;
     if (fico < p.minFico) continue;
 
     const assumptions: Assumption[] = [];
@@ -112,11 +115,21 @@ export function determineNonQmPrograms(
           "For bank-statement programs, lenders typically credit a portion of documented deposits. A conservative 75% of the amount you entered was used.",
       });
     } else if (doc === IncomeDocumentation.ONE_O_NINE_NINE || doc === IncomeDocumentation.PANDL_CPA || doc === IncomeDocumentation.PANDL_PREPARED) {
-      qualifyingIncome = i.grossMonthlyIncome * 0.9;
+      // P&L/1099 programs credit ~90% of the documented figure. When the
+      // borrower's actual two-year average net income (tax returns) is known
+      // and LOWER than the stated gross, use the net — aggressive write-offs
+      // are exactly what P&L lending is designed around, but qualifying is
+      // still based on the documented net (stress-test P1, INCOME-08).
+      const net2yrMonthly =
+        i.selfEmployedNetIncome2yrAvg != null && i.selfEmployedNetIncome2yrAvg > 0
+          ? i.selfEmployedNetIncome2yrAvg / 12
+          : null;
+      const base = net2yrMonthly != null && net2yrMonthly < i.grossMonthlyIncome ? net2yrMonthly : i.grossMonthlyIncome;
+      qualifyingIncome = base * 0.9;
       assumptions.push({
         key: "pnl_1099_income",
         description:
-          "For profit-and-loss or 1099 documentation, a conservative 90% of the amount you entered was used as qualifying income.",
+          "For profit-and-loss or 1099 documentation, a conservative 90% of the documented net income was used as qualifying income.",
       });
     } else if (doc === IncomeDocumentation.CASH_UNDOCUMENTED) {
       qualifyingIncome = i.grossMonthlyIncome * 0.5;

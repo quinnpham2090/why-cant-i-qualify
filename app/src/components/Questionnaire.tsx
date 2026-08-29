@@ -112,6 +112,23 @@ export function Questionnaire() {
   const [hasGiftFunds, setHasGiftFunds] = useState<"no" | "yes">("no");
   const [giftFundsAmount, setGiftFundsAmount] = useState<string>("");
   const [isFirstTimeBuyer, setIsFirstTimeBuyer] = useState<"unsure" | "yes" | "no">("unsure");
+  // Stress-test P1: income trend + side business
+  const [incomeTrend, setIncomeTrend] = useState<"unknown" | "up" | "flat" | "down">("unknown");
+  const [hasSideBusiness, setHasSideBusiness] = useState<"no" | "yes">("no");
+  const [sideBusinessNet, setSideBusinessNet] = useState<string>("");
+  // Stress-test P1: debt itemization (feeds the engine's debts[] rules)
+  const [hasStudentLoan, setHasStudentLoan] = useState<"no" | "yes">("no");
+  const [studentLoanStatus, setStudentLoanStatus] = useState<"repayment" | "deferred">("repayment");
+  const [studentLoanBalance, setStudentLoanBalance] = useState<string>("");
+  const [studentLoanPayment, setStudentLoanPayment] = useState<string>("");
+  const [hasSupportPayments, setHasSupportPayments] = useState<"no" | "yes">("no");
+  const [supportType, setSupportType] = useState<"alimony_paid" | "child_support_paid">("alimony_paid");
+  const [supportAmount, setSupportAmount] = useState<string>("");
+  const [supportMonthsLeft, setSupportMonthsLeft] = useState<string>("");
+  const [hasCosignedDebt, setHasCosignedDebt] = useState<"no" | "yes">("no");
+  const [cosignedPayment, setCosignedPayment] = useState<string>("");
+  const [cosignedOnTime12mo, setCosignedOnTime12mo] = useState<"no" | "yes">("no");
+  const [revolvingBalance, setRevolvingBalance] = useState<string>("");
 
   const num = (s: string) => {
     const n = Number(s);
@@ -132,6 +149,10 @@ export function Questionnaire() {
     credit_event: creditEvent,
     has_co_borrower: hasCoBorrower === "yes",
     knows_score: knowsScore === "yes",
+    income_trend: incomeTrend,
+    has_student_loan: hasStudentLoan === "yes",
+    has_support_payments: hasSupportPayments === "yes",
+    has_cosigned_debt: hasCosignedDebt === "yes",
   });
 
   /** Permissive decimal parse (0.5-year increments for credit events). */
@@ -153,6 +174,13 @@ export function Questionnaire() {
           next.cashPortion = "Please enter a share between 0 and 99.";
         }
       }
+      if (hasSideBusiness === "yes" && sideBusinessNet.trim() !== "") {
+        const n = Number(sideBusinessNet);
+        if (!Number.isFinite(n)) {
+          next.sideBusinessNet =
+            "Please enter the net business income or loss from your tax returns (a number, negative for a loss).";
+        }
+      }
     }
     if (s === 2) {
       if (knowsScore === "yes") {
@@ -167,6 +195,17 @@ export function Questionnaire() {
           next.yearsSinceCreditEvent =
             "Please enter how long ago, in years (0–10). Half-years like 1.5 are fine.";
         }
+      }
+    }
+    if (s === 3) {
+      if (hasStudentLoan === "yes" && studentLoanBalance.trim() === "") {
+        next.studentLoanBalance = "Please enter the total student loan balance (a rough number is fine).";
+      }
+      if (hasSupportPayments === "yes" && (supportAmount.trim() === "" || !Number.isFinite(Number(supportAmount)))) {
+        next.supportAmount = "Please enter the monthly support amount you pay.";
+      }
+      if (hasCosignedDebt === "yes" && (cosignedPayment.trim() === "" || !Number.isFinite(Number(cosignedPayment)))) {
+        next.cosignedPayment = "Please enter the monthly payment on the debt you cosigned.";
       }
     }
     setErrors(next);
@@ -201,6 +240,48 @@ export function Questionnaire() {
       goToStep(2);
       return;
     }
+    const debtTotal = num(debt);
+    // Stress-test P1: itemized debts — the engine applies program rules the
+    // aggregate number can't express (deferred student 1%, support <10mo
+    // exclusion, cosigned 12mo exclusion, revolving 5% floor). The remainder
+    // of the borrower's stated total is carried as an explicit "other" item
+    // because the engine treats debts[] as the complete itemization.
+    const itemizedDebts: EngineInputs["debts"] = [];
+    let otherDebt = debtTotal;
+    if (hasStudentLoan === "yes") {
+      const bal = num(studentLoanBalance);
+      const pay = num(studentLoanPayment);
+      itemizedDebts.push(
+        studentLoanStatus === "deferred"
+          ? { kind: "student_loan_deferred", balance: bal, fullyAmortPayment: pay }
+          : { kind: "student_loan_repayment", balance: bal, actualMonthlyPayment: pay },
+      );
+      otherDebt = Math.max(0, otherDebt - pay);
+    }
+    if (hasSupportPayments === "yes" && num(supportAmount) > 0) {
+      itemizedDebts.push({
+        kind: supportType,
+        courtOrderedAmount: num(supportAmount),
+        monthsUntilTermination: supportMonthsLeft.trim() !== "" ? Number(supportMonthsLeft) : undefined,
+      });
+      otherDebt = Math.max(0, otherDebt - num(supportAmount));
+    }
+    if (hasCosignedDebt === "yes" && num(cosignedPayment) > 0) {
+      itemizedDebts.push({
+        kind: "cosigned_secondary",
+        actualMonthlyPayment: num(cosignedPayment),
+        otherPartyOnTime12mo: cosignedOnTime12mo === "yes",
+      });
+      otherDebt = Math.max(0, otherDebt - num(cosignedPayment));
+    }
+    if (num(revolvingBalance) > 0) {
+      itemizedDebts.push({ kind: "revolving_line", balance: num(revolvingBalance) });
+      otherDebt = Math.max(0, otherDebt - Math.max(num(revolvingBalance) * 0.05, 0)); // approx 5% floor
+    }
+    if (otherDebt > 0) {
+      itemizedDebts.push({ kind: "other", actualMonthlyPayment: otherDebt });
+    }
+
     const inputs: EngineInputs = {
       loanPurpose,
       propertyUse,
@@ -208,6 +289,12 @@ export function Questionnaire() {
       grossMonthlyIncome: num(income),
       incomeType,
       incomeDocumentation: incomeDoc,
+      // Stress-test P1: declining income uses the recent level, not the average
+      incomeTrend,
+      sideBusinessNetMonthlyIncome:
+        hasSideBusiness === "yes" && sideBusinessNet.trim() !== ""
+          ? Number(sideBusinessNet)
+          : null,
       cashIncomePortionPct: hasCashIncome === "yes" ? (num(cashPortion) || 100) : 0,
       expectedMonthlyRent: propertyUse === PropertyUse.INVESTMENT && monthlyRent ? num(monthlyRent) : null,
       liquidAssetsTotal: totalAssets ? num(totalAssets) : null,
@@ -225,7 +312,8 @@ export function Questionnaire() {
         hasCoBorrower === "yes" && coBorrowerCreditTier !== CreditTier.UNKNOWN
           ? (CREDIT_TIER_TO_FICO[coBorrowerCreditTier] ?? null)
           : null,
-      totalMonthlyDebtPayments: num(debt),
+      totalMonthlyDebtPayments: otherDebt,
+      debts: itemizedDebts.length > 0 ? itemizedDebts : undefined,
       downPaymentAvailable: num(downPayment),
       targetPurchasePrice: price ? num(price) : null,
       propertyType,
@@ -473,6 +561,56 @@ export function Questionnaire() {
                 onChange={(e) => setYearsEmployed(e.target.value)}
               />
             </Field>
+            {/* Stress-test P1: income trend — declining income is underwritten at the recent level */}
+            <Field
+              id="q-income-trend"
+              label="Over the last two years, has your income gone up, stayed about the same, or gone down?"
+              help="Lenders qualify declining income at the recent lower level, not the average — this keeps your estimate honest."
+            >
+              <select
+                id="q-income-trend"
+                className={inputCls}
+                value={incomeTrend}
+                onChange={(e) => setIncomeTrend(e.target.value as "unknown" | "up" | "flat" | "down")}
+              >
+                <option value="unknown">Not sure</option>
+                <option value="up">Gone up</option>
+                <option value="flat">About the same</option>
+                <option value="down">Gone down</option>
+              </select>
+            </Field>
+            {/* Stress-test P1: side-business loss offsets W-2 income on tax returns */}
+            <Field id="q-side-business" label="Do you have a side business or self-employment income in addition to your main job?">
+              <select
+                id="q-side-business"
+                className={inputCls}
+                value={hasSideBusiness}
+                onChange={(e) => setHasSideBusiness(e.target.value as "no" | "yes")}
+              >
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+              </select>
+            </Field>
+            {hasSideBusiness === "yes" && (
+              <Field
+                id="q-side-business-net"
+                label="What does that business net per month after expenses, per your tax returns?"
+                help="Enter a negative number for a loss — for example -700. A loss on tax returns reduces qualifying income."
+                error={errors.sideBusinessNet}
+              >
+                <input
+                  id="q-side-business-net"
+                  className={inputCls}
+                  inputMode="numeric"
+                  maxLength={10}
+                  placeholder="e.g. 500 or -700 for a loss"
+                  value={sideBusinessNet}
+                  aria-invalid={errors.sideBusinessNet ? true : undefined}
+                  aria-describedby={errors.sideBusinessNet ? "q-side-business-net-error" : undefined}
+                  onChange={(e) => setSideBusinessNet(e.target.value)}
+                />
+              </Field>
+            )}
           </div>
         </fieldset>
       )}
@@ -573,6 +711,177 @@ export function Questionnaire() {
                 placeholder="e.g. 500"
                 value={debt}
                 onChange={(e) => setDebt(e.target.value)}
+              />
+            </Field>
+            {/* Stress-test P1: itemized debts — each has a program rule the total can't express */}
+            <Field
+              id="q-student-loan"
+              label="Do you have student loans?"
+              help="Deferred or income-driven loans are counted differently than standard repayment."
+            >
+              <select
+                id="q-student-loan"
+                className={inputCls}
+                value={hasStudentLoan}
+                onChange={(e) => setHasStudentLoan(e.target.value as "no" | "yes")}
+              >
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+              </select>
+            </Field>
+            {hasStudentLoan === "yes" && (
+              <>
+                <Field id="q-student-status" label="How are they being paid right now?">
+                  <select
+                    id="q-student-status"
+                    className={inputCls}
+                    value={studentLoanStatus}
+                    onChange={(e) => setStudentLoanStatus(e.target.value as "repayment" | "deferred")}
+                  >
+                    <option value="repayment">Standard / income-driven repayment</option>
+                    <option value="deferred">Deferred or forbearance (not paying yet)</option>
+                  </select>
+                </Field>
+                <Field id="q-student-balance" label="Total student loan balance" error={errors.studentLoanBalance}>
+                  <input
+                    id="q-student-balance"
+                    className={inputCls}
+                    inputMode="numeric"
+                    maxLength={10}
+                    placeholder="e.g. 35000"
+                    value={studentLoanBalance}
+                    aria-invalid={errors.studentLoanBalance ? true : undefined}
+                    aria-describedby={errors.studentLoanBalance ? "q-student-balance-error" : undefined}
+                    onChange={(e) => setStudentLoanBalance(e.target.value)}
+                  />
+                </Field>
+                <Field
+                  id="q-student-payment"
+                  label="Monthly student loan payment (0 if not paying yet)"
+                  help="If deferred, lenders typically count about 1% of the balance — we'll use that rule."
+                >
+                  <input
+                    id="q-student-payment"
+                    className={inputCls}
+                    inputMode="numeric"
+                    maxLength={7}
+                    placeholder="e.g. 280"
+                    value={studentLoanPayment}
+                    onChange={(e) => setStudentLoanPayment(e.target.value)}
+                  />
+                </Field>
+              </>
+            )}
+            <Field id="q-support" label="Do you pay alimony or child support?">
+              <select
+                id="q-support"
+                className={inputCls}
+                value={hasSupportPayments}
+                onChange={(e) => setHasSupportPayments(e.target.value as "no" | "yes")}
+              >
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+              </select>
+            </Field>
+            {hasSupportPayments === "yes" && (
+              <>
+                <Field id="q-support-type" label="Which do you pay?">
+                  <select
+                    id="q-support-type"
+                    className={inputCls}
+                    value={supportType}
+                    onChange={(e) => setSupportType(e.target.value as "alimony_paid" | "child_support_paid")}
+                  >
+                    <option value="alimony_paid">Alimony (spousal support)</option>
+                    <option value="child_support_paid">Child support</option>
+                  </select>
+                </Field>
+                <Field id="q-support-amount" label="Monthly amount you pay" error={errors.supportAmount}>
+                  <input
+                    id="q-support-amount"
+                    className={inputCls}
+                    inputMode="numeric"
+                    maxLength={7}
+                    placeholder="e.g. 800"
+                    value={supportAmount}
+                    aria-invalid={errors.supportAmount ? true : undefined}
+                    aria-describedby={errors.supportAmount ? "q-support-amount-error" : undefined}
+                    onChange={(e) => setSupportAmount(e.target.value)}
+                  />
+                </Field>
+                <Field
+                  id="q-support-months"
+                  label="How many months until it ends? (optional)"
+                  help="Support ending within 10 months is typically left out of the qualifying math — leave blank if there's no end date."
+                >
+                  <input
+                    id="q-support-months"
+                    className={inputCls}
+                    inputMode="numeric"
+                    maxLength={4}
+                    placeholder="e.g. 8"
+                    value={supportMonthsLeft}
+                    onChange={(e) => setSupportMonthsLeft(e.target.value)}
+                  />
+                </Field>
+              </>
+            )}
+            <Field id="q-cosigned" label="Is anyone else's debt on your credit because you cosigned for them?">
+              <select
+                id="q-cosigned"
+                className={inputCls}
+                value={hasCosignedDebt}
+                onChange={(e) => setHasCosignedDebt(e.target.value as "no" | "yes")}
+              >
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+              </select>
+            </Field>
+            {hasCosignedDebt === "yes" && (
+              <>
+                <Field id="q-cosigned-payment" label="Monthly payment on that debt" error={errors.cosignedPayment}>
+                  <input
+                    id="q-cosigned-payment"
+                    className={inputCls}
+                    inputMode="numeric"
+                    maxLength={7}
+                    placeholder="e.g. 420"
+                    value={cosignedPayment}
+                    aria-invalid={errors.cosignedPayment ? true : undefined}
+                    aria-describedby={errors.cosignedPayment ? "q-cosigned-payment-error" : undefined}
+                    onChange={(e) => setCosignedPayment(e.target.value)}
+                  />
+                </Field>
+                <Field
+                  id="q-cosigned-ontime"
+                  label="Has the other person paid it on time for the last 12 months?"
+                  help="If yes and you can document it, lenders typically leave it out of your qualifying math."
+                >
+                  <select
+                    id="q-cosigned-ontime"
+                    className={inputCls}
+                    value={cosignedOnTime12mo}
+                    onChange={(e) => setCosignedOnTime12mo(e.target.value as "no" | "yes")}
+                  >
+                    <option value="no">No / not sure</option>
+                    <option value="yes">Yes</option>
+                  </select>
+                </Field>
+              </>
+            )}
+            <Field
+              id="q-revolving-balance"
+              label="Total balance on your credit cards (optional)"
+              help="Card balances count at least 1-5% of the balance monthly — this refines your debt estimate."
+            >
+              <input
+                id="q-revolving-balance"
+                className={inputCls}
+                inputMode="numeric"
+                maxLength={9}
+                placeholder="e.g. 8000"
+                value={revolvingBalance}
+                onChange={(e) => setRevolvingBalance(e.target.value)}
               />
             </Field>
             <Field id="q-down-payment" label="Down payment you have saved">

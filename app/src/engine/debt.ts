@@ -23,6 +23,15 @@ export function monthlyDebt(d: Debt): number {
 
     case "alimony_paid":
       if ((d.monthsBehind ?? 0) >= 10) return 0; // excluded from DTI (severe credit issue)
+      // FNMA B3-6-05: support terminating within 10 months of closing is
+      // excluded from the ratio (stress-test P1: DTI-04 fix).
+      if (
+        d.monthsUntilTermination != null &&
+        d.monthsUntilTermination >= 0 &&
+        d.monthsUntilTermination < 10
+      ) {
+        return 0;
+      }
       return d.courtOrderedAmount ?? 0;
 
     case "child_support_paid":

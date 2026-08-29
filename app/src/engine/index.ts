@@ -327,7 +327,7 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
   const composite = computeComposite(subScores);
 
   // 12. Obstacles + strengths
-  const { primary, secondary, strengths } = identifyObstacles(i, subScores, credit, effectivePrograms);
+  const { primary, secondary, strengths } = identifyObstacles(i, subScores, credit, effectivePrograms, reservesMonths);
 
   // 13. Confidence
   const { confidence, reasons } = computeConfidence(i);

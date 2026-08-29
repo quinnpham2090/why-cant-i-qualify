@@ -9,7 +9,7 @@ import {
   PROGRAM_MIN_FICO,
   USDA_ANNUAL_GUARANTEE_PCT,
 } from "./tables";
-import { LoanType, PropertyUse, type EngineInputs } from "./types";
+import { LoanType, PropertyType, PropertyUse, type EngineInputs } from "./types";
 import type { CreditProfile } from "./credit";
 
 /** Determine which programs the inputs are plausibly eligible for. */
@@ -17,19 +17,25 @@ export function determineEligiblePrograms(i: EngineInputs, credit: CreditProfile
   const eligible: LoanType[] = [];
   const fico = credit.fico;
 
-  if (fico >= (PROGRAM_MIN_FICO.conventional_conf ?? 620) && credit.waitingClear && i.propertyUse === PropertyUse.PRIMARY) {
+  // Non-warrantable condos are excluded from ALL agency programs (Fannie,
+  // Freddie, FHA, VA, USDA) — only non-QM/conventional-non-warrantable paths
+  // remain (stress-test P1, PROP-01: the engine previously recommended
+  // conventional for a building no agency lender would finance).
+  const warrantable = i.propertyType !== PropertyType.CONDO_NONWARRANTABLE;
+
+  if (warrantable && fico >= (PROGRAM_MIN_FICO.conventional_conf ?? 620) && credit.waitingClear && i.propertyUse === PropertyUse.PRIMARY) {
     eligible.push(LoanType.CONVENTIONAL_CONF);
   }
-  if (fico >= (PROGRAM_MIN_FICO.conventional_jumbo ?? 700) && credit.waitingClear && (i.propertyUse === PropertyUse.PRIMARY || i.propertyUse === PropertyUse.SECOND_HOME)) {
+  if (warrantable && fico >= (PROGRAM_MIN_FICO.conventional_jumbo ?? 700) && credit.waitingClear && (i.propertyUse === PropertyUse.PRIMARY || i.propertyUse === PropertyUse.SECOND_HOME)) {
     eligible.push(LoanType.CONVENTIONAL_JUMBO);
   }
-  if (fico >= (PROGRAM_MIN_FICO.fha ?? 580) && credit.waitingClear && i.propertyUse === PropertyUse.PRIMARY) {
+  if (warrantable && fico >= (PROGRAM_MIN_FICO.fha ?? 580) && credit.waitingClear && i.propertyUse === PropertyUse.PRIMARY) {
     eligible.push(LoanType.FHA);
   }
-  if (i.loanType === LoanType.VA && fico >= 620 && credit.waitingClear) {
+  if (warrantable && i.loanType === LoanType.VA && fico >= 620 && credit.waitingClear) {
     eligible.push(LoanType.VA);
   }
-  if (i.loanType === LoanType.USDA && fico >= (PROGRAM_MIN_FICO.usda ?? 640) && credit.waitingClear) {
+  if (warrantable && i.loanType === LoanType.USDA && fico >= (PROGRAM_MIN_FICO.usda ?? 640) && credit.waitingClear) {
     eligible.push(LoanType.USDA);
   }
 
