@@ -35,8 +35,19 @@ export function determineEligiblePrograms(i: EngineInputs, credit: CreditProfile
   if (warrantable && i.loanType === LoanType.VA && fico >= 620 && credit.waitingClear) {
     eligible.push(LoanType.VA);
   }
-  if (warrantable && i.loanType === LoanType.USDA && fico >= (PROGRAM_MIN_FICO.usda ?? 640) && credit.waitingClear) {
+  // USDA rural gate (stress-test P2): location matters as much as FICO.
+  if (warrantable && i.loanType === LoanType.USDA && fico >= (PROGRAM_MIN_FICO.usda ?? 640) && credit.waitingClear && i.isRuralArea !== "no") {
     eligible.push(LoanType.USDA);
+  }
+
+  // FHA 500-579 with 10% down (stress-test P3, CREDIT-01): the only standard
+  // path below 580 — kept out of the generic FHA gate above, which requires
+  // 580 for 3.5% down.
+  if (warrantable && fico >= 500 && fico < 580 && i.propertyUse === PropertyUse.PRIMARY && credit.waitingClear) {
+    const dpPct = i.targetPurchasePrice ? (i.downPaymentAvailable / i.targetPurchasePrice) * 100 : 0;
+    if (dpPct >= 10) {
+      eligible.push(LoanType.FHA);
+    }
   }
 
   return eligible.length > 0 ? eligible : [LoanType.UNKNOWN];
@@ -54,6 +65,10 @@ export function recommendProgram(eligible: LoanType[], i: EngineInputs): LoanTyp
   if (eligible.includes(LoanType.VA)) return LoanType.VA;
   if (eligible.includes(LoanType.FHA) && i.downPaymentAvailable < (i.targetPurchasePrice ?? 0) * 0.05) {
     return LoanType.FHA;
+  }
+  // Investor with documented rent: the rent-driven program is the headline.
+  if (eligible.includes(LoanType.DSCR)) {
+    return LoanType.DSCR;
   }
   return eligible.includes(LoanType.CONVENTIONAL_CONF) ? LoanType.CONVENTIONAL_CONF : eligible[0];
 }

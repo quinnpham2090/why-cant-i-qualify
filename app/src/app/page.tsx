@@ -2,6 +2,7 @@ import Link from "next/link";
 import { DISCLOSURES } from "@/config/disclosures";
 import { HERO_HEADLINE, HERO_SUBHEAD } from "@/engine/labels";
 import { HeroIllustration } from "@/components/HeroIllustration";
+import { Testimonials } from "@/components/Testimonials";
 
 const trustBadges = [
   { label: "No credit pull", icon: "shield" },
@@ -88,13 +89,13 @@ export default function Home() {
   return (
     <div>
       {/* ───────────────────────── HERO ───────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-sand-50 via-white to-white">
+      <section className="relative overflow-hidden bg-gradient-to-b from-sand-50 via-background to-white">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(60%_60%_at_50%_0%,rgba(122,147,128,0.16),transparent)]"
         />
         <div className="relative mx-auto max-w-5xl px-4 pb-20 pt-16 text-center sm:pt-24">
-          <p className="mx-auto mb-5 inline-flex items-center gap-2 rounded-full border border-sage-100 bg-white/80 px-4 py-1.5 text-sm font-medium text-warm-700 shadow-sm backdrop-blur">
+          <p className="mx-auto mb-5 inline-flex items-center gap-2 rounded-full border border-sage-100 bg-surface/80 px-4 py-1.5 text-sm font-medium text-warm-700 shadow-sm backdrop-blur">
             <span className="h-2 w-2 rounded-full bg-sage-600" />
             Free mortgage readiness check · Florida
           </p>
@@ -112,13 +113,13 @@ export default function Home() {
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               href="/check"
-              className="w-full rounded-full bg-warm-700 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-warm-700/20 transition hover:bg-warm-900 focus:outline-none focus:ring-2 focus:ring-sage-600 focus:ring-offset-2 sm:w-auto"
+              className="w-full rounded-full bg-accent px-8 py-4 text-base font-semibold text-accent-text shadow-lg shadow-warm-700/20 transition hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-sage-600 focus:ring-offset-2 sm:w-auto"
             >
               See where I stand — free
             </Link>
             <Link
               href="/how-it-works"
-              className="w-full rounded-full border border-sand-200 bg-white px-8 py-4 text-base font-medium text-warm-900 transition hover:border-sage-600 hover:bg-sand-50 sm:w-auto"
+              className="w-full rounded-full border border-sand-200 bg-surface px-8 py-4 text-base font-medium text-warm-900 transition hover:border-sage-600 hover:bg-sand-50 sm:w-auto"
             >
               How it works
             </Link>
@@ -176,10 +177,10 @@ export default function Home() {
           </div>
           <ol className="mt-12 grid gap-6 md:grid-cols-3">
             {steps.map((s) => (
-              <li key={s.n} className="relative rounded-2xl border border-sand-200 bg-white p-7 shadow-sm">
+              <li key={s.n} className="relative rounded-2xl border border-sand-200 bg-surface p-7 shadow-sm">
                 <span
                   aria-hidden="true"
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-warm-700 text-lg font-bold text-white"
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-lg font-bold text-accent-text"
                 >
                   {s.n}
                 </span>
@@ -192,12 +193,12 @@ export default function Home() {
       </section>
 
       {/* ───────────────────── ABOUT THE MLO ───────────────────── */}
-      <section className="bg-warm-900 py-16" aria-labelledby="about">
+      <section className="bg-band py-16 text-band-text" aria-labelledby="about">
         <div className="mx-auto max-w-3xl px-4 text-center">
-          <h2 id="about" className="text-2xl font-bold text-white">
+          <h2 id="about" className="text-2xl font-bold">
             A real licensed professional — not a faceless form
           </h2>
-          <p className="mt-4 leading-relaxed text-sage-100">
+          <p className="mt-4 leading-relaxed opacity-90">
             This tool is offered by {DISCLOSURES.mlo.name}, a licensed mortgage loan
             originator (NMLS #{DISCLOSURES.mlo.nmlsId}) with {DISCLOSURES.broker.name}{" "}
             (NMLS #{DISCLOSURES.broker.nmlsId}). The snapshot is educational; only a
@@ -206,12 +207,15 @@ export default function Home() {
           </p>
           <Link
             href="/book"
-            className="mt-7 inline-block rounded-full bg-sage-600 px-8 py-3.5 font-semibold text-white transition hover:bg-warm-500"
+            className="mt-7 inline-block rounded-full bg-band-text px-8 py-3.5 font-semibold text-band-bg transition hover:opacity-90"
           >
             Book a free review
           </Link>
         </div>
       </section>
+
+      {/* ─────────────────── TESTIMONIALS (P18) ─────────────────── */}
+      <Testimonials />
 
       {/* ─────────────────────── BOTTOM CTA ─────────────────────── */}
       <section className="py-16 text-center sm:py-20">
@@ -224,7 +228,7 @@ export default function Home() {
           </p>
           <Link
             href="/check"
-            className="mt-8 inline-block rounded-full bg-warm-700 px-10 py-4 text-base font-semibold text-white shadow-lg shadow-warm-700/20 transition hover:bg-warm-900 focus:outline-none focus:ring-2 focus:ring-sage-600 focus:ring-offset-2"
+            className="mt-8 inline-block rounded-full bg-accent px-10 py-4 text-base font-semibold text-accent-text shadow-lg shadow-warm-700/20 transition hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-sage-600 focus:ring-offset-2"
           >
             Start my free readiness check
           </Link>

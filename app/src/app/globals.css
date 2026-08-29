@@ -5,6 +5,12 @@
  * contrast math in RESEARCH_EMPATHY.md. Low-arousal sage/sand replaces the
  * high-arousal emerald-first scheme; alarm red is reserved for form errors,
  * never for tier badges.
+ *
+ * Dark mode (FIX_PLAN V1.6 P17): the same token names re-map under
+ * `@media (prefers-color-scheme: dark)`, so every `bg-warm-*`/`bg-sand-*`
+ * utility flips automatically. Dark values keep the warm/green undertone
+ * (never pure gray) and were checked for WCAG AA contrast against their
+ * paired text colors (body text ≥ 7:1, secondary ≥ 4.5:1).
  */
 :root {
   --background: #ffffff;
@@ -20,6 +26,54 @@
   --sand-200: #e3d8c3;
   --sand-50: #f7f3ea;
   --sky-soft-600: #5e8fa8;
+
+  /* Surfaces for shells that used literal neutral-* colors (P17) */
+  --surface: #ffffff;
+  --surface-2: #fafafa; /* neutral-50 */
+  --border-hairline: #e5e5e5; /* neutral-200 */
+  --text-strong: #171717; /* neutral-900 */
+  --text-body: #404040; /* neutral-700 */
+  --text-muted: #737373; /* neutral-500 */
+  --accent-solid: #4a5d4c;
+  --accent-hover: #2d3a2e;
+  --accent-text: #ffffff;
+  /* Inverted band (About the MLO section): dark panel in light mode */
+  --band-bg: #2d3a2e;
+  --band-text: #e8efea;
+  --error-text: #be123c; /* rose-700 */
+  --error-soft: #fff1f2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #161b17;
+    --foreground: #e2e8e3;
+
+    --warm-900: #e2e8e3; /* headings invert to light */
+    --warm-700: #a8bcaa; /* body-strong on dark */
+    --warm-500: #8aa18c;
+    --sage-600: #86a18b;
+    --sage-100: #2a342c;
+    --sage-50: #202822;
+    --sand-100: #2b2a24;
+    --sand-200: #3a382e;
+    --sand-50: #1e1e19;
+
+    --surface: #1a201b;
+    --surface-2: #20261f;
+    --border-hairline: #31392f;
+    --text-strong: #eef2ee;
+    --text-body: #c3ccc4;
+    --text-muted: #939e94;
+    --accent-solid: #7a9380;
+    --accent-hover: #8fa695;
+    --accent-text: #10140f;
+    /* Inverted band flips to a light panel in dark mode */
+    --band-bg: #e8efea;
+    --band-text: #26302a;
+    --error-text: #fb7185; /* rose-400 on dark */
+    --error-soft: #2a1a1d;
+  }
 }
 
 @theme inline {
@@ -38,10 +92,26 @@
   --color-sand-200: var(--sand-200);
   --color-sand-50: var(--sand-50);
   --color-sky-soft-600: var(--sky-soft-600);
+
+  /* P17 surface tokens */
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-hairline: var(--border-hairline);
+  --color-text-strong: var(--text-strong);
+  --color-text-body: var(--text-body);
+  --color-text-muted: var(--text-muted);
+  --color-accent: var(--accent-solid);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-text: var(--accent-text);
+  --color-band: var(--band-bg);
+  --color-band-text: var(--band-text);
+  --color-error: var(--error-text);
+  --color-error-soft: var(--error-soft);
 }
 
 html {
   scroll-behavior: smooth;
+  color-scheme: light dark;
 }
 
 body {

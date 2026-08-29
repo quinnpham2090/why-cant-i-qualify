@@ -236,7 +236,7 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
         <div className="rounded-2xl border border-sand-200 bg-sand-50 p-6">
           <h3 className="text-base font-semibold text-warm-900">Where we would start</h3>
           {result.primaryObstacle ? (
-            <div className="mt-3 rounded-xl border border-sand-200 bg-white p-4">
+            <div className="mt-3 rounded-xl border border-sand-200 bg-surface p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-warm-500">
                 The main thing to look at
               </p>
@@ -255,7 +255,7 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
           {result.secondaryObstacles.length > 0 && (
             <ul className="mt-3 space-y-2">
               {result.secondaryObstacles.map((o) => (
-                <li key={`${o.category}-${o.description}`} className="rounded-lg bg-white p-3 text-sm text-warm-700">
+                <li key={`${o.category}-${o.description}`} className="rounded-lg bg-surface p-3 text-sm text-warm-700">
                   {o.description}
                 </li>
               ))}
@@ -270,7 +270,7 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
           <h3 className="text-base font-semibold text-warm-900">What is already working for you</h3>
           <ul className="mt-3 space-y-2">
             {result.strengths.map((s) => (
-              <li key={`${s.category}-${s.description}`} className="flex items-start gap-2 rounded-lg bg-white p-3 text-sm text-warm-900">
+              <li key={`${s.category}-${s.description}`} className="flex items-start gap-2 rounded-lg bg-surface p-3 text-sm text-warm-900">
                 <span className="mt-0.5 text-sage-600"><StrengthIcon className="h-4 w-4" /></span>
                 {s.description}
               </li>
@@ -281,7 +281,7 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
 
       {/* 4. Programs that may fit — agency + non-QM with explicit framing */}
       {result.eligiblePrograms.length > 0 && result.eligiblePrograms[0] !== LoanType.UNKNOWN && (
-        <div className="rounded-2xl border border-sand-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm">
           <h3 className="text-base font-semibold text-warm-900">Programs that may fit your situation</h3>
           {qmPrograms.length > 0 && (
             <ul className="mt-3 flex flex-wrap gap-2">
@@ -314,7 +314,7 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
       )}
 
       {/* 5. Headline numbers (always ranges) */}
-      <div className="rounded-2xl border border-sand-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm">
         <h3 className="text-base font-semibold text-warm-900">Your estimated ranges</h3>
         <dl className="mt-2">
           <RangeRow
@@ -357,7 +357,7 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
       </div>
 
       {/* 6. Seven pillars — collapsed so detail is available without overwhelming */}
-      <details className="rounded-2xl border border-sand-200 bg-white p-6 shadow-sm">
+      <details className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm">
         <summary className="cursor-pointer text-base font-semibold text-warm-900">
           Readiness across seven areas (details)
         </summary>
@@ -398,7 +398,7 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
 
       {/* 7. Assumptions disclosed (audit constraint #11) */}
       {result.assumptionsUsed.length > 0 && (
-        <details className="rounded-2xl border border-sand-200 bg-white p-6 shadow-sm">
+        <details className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm">
           <summary className="cursor-pointer text-base font-semibold text-warm-900">
             How we calculated this (assumptions we made)
           </summary>

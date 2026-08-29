@@ -71,13 +71,13 @@
 
 **Inputs:** income $4800/mo (w2, unknown doc), FICO 540, DTI inputs debt $650/mo, down $25000 on $250000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `some_considerations` (52), DTI 56.1% back-end / 42.6% front-end, eligible `[unknown]`, recommended `—`, confidence `high`
+**Engine result:** tier `some_considerations` (51), DTI 57.3% back-end / 43.7% front-end, eligible `[fha]`, recommended `fha`, confidence `high`
 
 **Primary obstacle:** [credit] The estimated credit score may be below the typical requirement for the program you selected; other programs may fit better. *(fix: 3-12 months)*
 
 **Secondary:** [debt] The estimated debt-to-income ratio appears to be above 50%.
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate
+**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
 
 **Detected?** yes — _Engine obstacle matches denial reason_
 
@@ -697,6 +697,8 @@
 
 **Primary obstacle:** [property] Manufactured homes must sit on owned land with a permanent foundation and typically must be a multi-section (double-wide or larger) home built after 1976 to use most standard loan programs. *(fix: out_of_user_control)*
 
+**Secondary:** [debt] For VA loans, lenders can also look at residual income — the money left each month after taxes and living costs. A closer budget review sometimes works when the ratio alone looks tight.
+
 **Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate
 
 **Detected?** yes — _Engine obstacle matches denial reason_
@@ -904,4 +906,4 @@
 
 ---
 
-*Method: 40 scenarios run through the live deterministic engine at 2026-08-29T01:38:17.202Z. Tiers, DTI, eligible programs, obstacles, strengths, assumptions, and confidence are the engine's actual outputs. Missing-question and solution rankings are synthesized from the coverage gaps above.*
+*Method: 40 scenarios run through the live deterministic engine at 2026-08-29T03:06:09.925Z. Tiers, DTI, eligible programs, obstacles, strengths, assumptions, and confidence are the engine's actual outputs. Missing-question and solution rankings are synthesized from the coverage gaps above.*

@@ -16,10 +16,10 @@ export function LegalShell({
 }) {
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
-      <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
-      <p className="mt-2 text-sm text-neutral-500">{updated}</p>
-      <div className="mt-6 space-y-4 text-neutral-700 leading-relaxed">{children}</div>
-      <p className="mt-8 text-xs text-neutral-500">
+      <h1 className="text-3xl font-semibold tracking-tight text-text-strong">{title}</h1>
+      <p className="mt-2 text-sm text-text-muted">{updated}</p>
+      <div className="mt-6 space-y-4 text-text-body leading-relaxed">{children}</div>
+      <p className="mt-8 text-xs text-text-muted">
         {DISCLOSURES.broker.name} · NMLS #{DISCLOSURES.broker.nmlsId} ·{" "}
         {DISCLOSURES.business.addressLine1}, {DISCLOSURES.business.city},{" "}
         {DISCLOSURES.business.state} {DISCLOSURES.business.zip}

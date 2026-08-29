@@ -20,8 +20,8 @@ export interface LeadContext {
 }
 
 const inputCls =
-  "w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base text-slate-900 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500";
-const labelCls = "mb-1.5 block text-sm font-medium text-slate-800";
+  "w-full rounded-lg border border-hairline bg-surface px-3 py-2.5 text-base text-text-strong focus:border-sage-600 focus:outline-none focus:ring-2 focus:ring-sage-600";
+const labelCls = "mb-1.5 block text-sm font-medium text-text-strong";
 
 export function LeadCaptureForm({ context }: { context?: LeadContext }) {
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
@@ -98,16 +98,16 @@ export function LeadCaptureForm({ context }: { context?: LeadContext }) {
 
   if (status === "success") {
     return (
-      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-8 text-center">
-        <h3 className="text-xl font-semibold text-emerald-900">You&rsquo;re all set</h3>
-        <p className="mx-auto mt-2 max-w-md text-sm text-emerald-800">
+      <div className="rounded-2xl border border-sage-100 bg-sage-50 p-8 text-center">
+        <h3 className="text-xl font-semibold text-warm-900">You&rsquo;re all set</h3>
+        <p className="mx-auto mt-2 max-w-md text-sm text-warm-700">
           We&rsquo;ve received your information. If you&rsquo;d like to talk it through,
           book a free review below — no obligation.
         </p>
         <a
           href="/book"
           onClick={() => trackEvent({ event: "book_click" })}
-          className="mt-5 inline-block rounded-full bg-emerald-700 px-7 py-3 font-semibold text-white hover:bg-emerald-800"
+          className="mt-5 inline-block rounded-full bg-accent px-7 py-3 font-semibold text-accent-text hover:bg-accent-hover"
         >
           Book my free review
         </a>
@@ -116,11 +116,11 @@ export function LeadCaptureForm({ context }: { context?: LeadContext }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8" noValidate>
-      <h3 className="text-xl font-semibold text-slate-900">
+    <form onSubmit={onSubmit} className="rounded-2xl border border-hairline bg-surface p-6 shadow-sm sm:p-8" noValidate>
+      <h3 className="text-xl font-semibold text-text-strong">
         Want a licensed pro to walk through this with you?
       </h3>
-      <p className="mt-1.5 text-sm text-slate-600">
+      <p className="mt-1.5 text-sm text-text-body">
         Leave your details and {`we'll`} connect you with a licensed loan originator for a
         free, no-obligation review.
       </p>
@@ -157,32 +157,32 @@ export function LeadCaptureForm({ context }: { context?: LeadContext }) {
       {siteKey && <div ref={turnstileRef} className="mt-4" />}
 
       {/* Consent — un-pre-checked (TCPA / MAP requirement) */}
-      <label className="mt-5 flex items-start gap-3 rounded-lg bg-slate-50 p-4 text-sm text-slate-700">
+      <label className="mt-5 flex items-start gap-3 rounded-lg bg-surface-2 p-4 text-sm text-text-body">
         <input
           type="checkbox"
           checked={consent}
           onChange={(e) => setConsent(e.target.checked)}
-          className="mt-0.5 h-4 w-4 accent-emerald-700"
+          className="mt-0.5 h-4 w-4 accent-accent"
           required
         />
         <span>
           {TCPA_CONSENT_TEXT}
-          <span className="mt-2 block text-xs text-slate-500">{LEAD_TRANSFER_TEXT}</span>
+          <span className="mt-2 block text-xs text-text-muted">{LEAD_TRANSFER_TEXT}</span>
         </span>
       </label>
 
       {status === "error" && (
-        <p role="alert" className="mt-3 text-sm text-rose-700">{error}</p>
+        <p role="alert" className="mt-3 text-sm text-error">{error}</p>
       )}
 
       <button
         type="submit"
         disabled={!consent || status === "submitting"}
-        className="mt-5 w-full rounded-full bg-emerald-700 px-8 py-3.5 font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-5 w-full rounded-full bg-accent px-8 py-3.5 font-semibold text-accent-text transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
       >
         {status === "submitting" ? "Sending…" : "Request my free review"}
       </button>
-      <p className="mt-3 text-center text-xs text-slate-500">
+      <p className="mt-3 text-center text-xs text-text-muted">
         Consent is not a condition of purchase. You can opt out at any time.
       </p>
     </form>

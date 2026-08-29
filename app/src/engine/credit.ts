@@ -23,6 +23,8 @@ export interface CreditProfile {
   had60DayLate24mo: boolean;
   had30DayLate12mo: boolean;
   collectionsClean: boolean;
+  /** Revolving balance / limit when both provided (0 when unknown). */
+  utilization: number;
 }
 
 export interface CreditResult {
@@ -85,6 +87,23 @@ export function buildCreditProfile(i: EngineInputs): CreditResult {
     }
   }
 
+  // High revolving utilization (stress-test P2, CREDIT-08): carrying balances
+  // near the limits suppresses the mortgage score even with perfect payment
+  // history. Estimated from itemized revolving balances vs the stated limit.
+  let utilization = 0;
+  if (i.revolvingCreditLimit != null && i.revolvingCreditLimit > 0) {
+    const revolvingBalances = (i.debts ?? [])
+      .filter((d) => d.kind === "credit_card" || d.kind === "revolving_line")
+      .reduce((sum, d) => sum + (d.balance ?? 0), 0);
+    utilization = revolvingBalances / i.revolvingCreditLimit;
+    if (utilization > 0.5) {
+      assumptions.push({
+        key: "revolving_utilization",
+        description: `Credit-card balances are about ${Math.round(utilization * 100)}% of your total card limits. Paying balances below roughly 30% of the limits before a lender reviews your credit often improves the score fastest.`,
+      });
+    }
+  }
+
   return {
     profile: {
       fico: effectiveFico,
@@ -93,6 +112,7 @@ export function buildCreditProfile(i: EngineInputs): CreditResult {
       had60DayLate24mo: i.had60DayLate24mo ?? false,
       had30DayLate12mo: i.had30DayLate12mo ?? false,
       collectionsClean: i.collectionsUnder2k ?? true,
+      utilization,
     },
     assumptions,
   };
@@ -131,16 +151,25 @@ export function scoreCredit(profile: CreditProfile): SubScore {
   const lateComponent = profile.had60DayLate24mo ? 0 : 100;
   const collectionsComponent = profile.collectionsClean ? 100 : 50;
 
-  const score = Math.round(
+  const base = Math.round(
     w.ficoBand * ficoComponent +
       w.waitingPeriodClear * waitingComponent +
       w.no60DayLate24mo * lateComponent +
       w.collectionsClean * collectionsComponent,
   );
 
+  // High utilization penalty (stress-test P2): applied only when the borrower
+  // supplied balances and a limit; near-maxed cards suppress the mortgage
+  // score even with perfect payment history. Zero impact when unknown/low.
+  const utilPenalty = profile.utilization > 0.85 ? 8 : profile.utilization > 0.5 ? 4 : 0;
+  const score = Math.max(0, base - utilPenalty);
+
   const redFlags: string[] = [];
   if (!profile.waitingClear) redFlags.push("A recent credit event is still within its waiting period.");
   if (profile.had60DayLate24mo) redFlags.push("A 60-day late payment in the last 24 months weighs on credit readiness.");
+  if (profile.utilization > 0.5) {
+    redFlags.push("Credit-card balances are high relative to the limits; paying them down may improve the score before applying.");
+  }
 
   return {
     category: "credit",

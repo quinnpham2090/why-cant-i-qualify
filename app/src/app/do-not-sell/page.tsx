@@ -25,7 +25,7 @@ export default function DoNotSellPage() {
         submit a request using the contact below. We will honor such requests in
         accordance with applicable law.
       </p>
-      <h2 className="text-xl font-semibold text-neutral-900">Submit a request</h2>
+      <h2 className="text-xl font-semibold text-text-strong">Submit a request</h2>
       <p>Contact our privacy team to submit a request or ask a question.</p>
     </LegalShell>
   );

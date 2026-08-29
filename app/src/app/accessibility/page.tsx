@@ -14,7 +14,7 @@ export default function AccessibilityPage() {
         We are committed to making this website usable by people with disabilities and
         to conforming to the Web Content Accessibility Guidelines (WCAG) 2.1 Level AA.
       </p>
-      <h2 className="text-xl font-semibold text-neutral-900">Measures we take</h2>
+      <h2 className="text-xl font-semibold text-text-strong">Measures we take</h2>
       <ul className="list-inside list-disc space-y-1.5">
         <li>Sufficient color contrast and resizable text.</li>
         <li>Full keyboard navigation and visible focus indicators.</li>
@@ -22,7 +22,7 @@ export default function AccessibilityPage() {
         <li>Clear heading structure and a skip-to-content link.</li>
         <li>Reduced-motion respect for animations.</li>
       </ul>
-      <h2 className="text-xl font-semibold text-neutral-900">Feedback</h2>
+      <h2 className="text-xl font-semibold text-text-strong">Feedback</h2>
       <p>
         If you encounter an accessibility barrier, please contact us so we can address
         it. We welcome your feedback.

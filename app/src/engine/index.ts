@@ -285,12 +285,16 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
     if (effectivePrograms.includes(LoanType.DSCR)) {
       const dscr = dscrFromRent(i.expectedMonthlyRent ?? 0, p);
       if (dscr != null) {
-        coverageScore = dscr >= 1.25 ? 90 : dscr >= 1.1 ? 75 : dscr >= 1.0 ? 60 : 40;
+        // P3: sub-1.0 coverage scored with a larger-down investment tier
+        // rather than treated as a flat failure (stress-test PROP-03).
+        coverageScore = dscr >= 1.25 ? 90 : dscr >= 1.1 ? 75 : dscr >= 1.0 ? 60 : dscr >= 0.75 ? 45 : 30;
         coverageSummary = `Rent coverage (DSCR) ${(dscr * 100).toFixed(0)}% of payment`;
         assumptions.push({
           key: "dscr_coverage",
           description:
-            "For the investor cash-flow program, readiness was scored on how well the expected rent covers the payment (rent coverage), not on your personal debt-to-income ratio.",
+            dscr >= 1.0
+              ? "For the investor cash-flow program, readiness was scored on how well the expected rent covers the payment (rent coverage), not on your personal debt-to-income ratio."
+              : "The expected rent covers part of the payment. Programs that allow coverage below the full payment typically ask for a larger down payment and price higher; your personal debt-to-income ratio was not used.",
         });
       }
     }

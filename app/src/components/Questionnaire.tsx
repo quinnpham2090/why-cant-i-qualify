@@ -22,7 +22,7 @@ const inputCls =
   "w-full rounded-lg border border-sand-200 px-3 py-2.5 text-base text-warm-900 focus:border-sage-600 focus:outline-none focus:ring-2 focus:ring-sage-600";
 const labelCls = "mb-1.5 block text-sm font-medium text-warm-900";
 const helpCls = "mt-1 text-xs text-warm-500";
-const errorCls = "mt-1 text-xs font-medium text-rose-700";
+const errorCls = "mt-1 text-xs font-medium text-error";
 
 /**
  * One questionnaire step (FIX_PLAN V1.6 P10). Each field wires its label,
@@ -129,6 +129,22 @@ export function Questionnaire() {
   const [cosignedPayment, setCosignedPayment] = useState<string>("");
   const [cosignedOnTime12mo, setCosignedOnTime12mo] = useState<"no" | "yes">("no");
   const [revolvingBalance, setRevolvingBalance] = useState<string>("");
+  // Stress-test P2 additions
+  const [revolvingLimit, setRevolvingLimit] = useState<string>("");
+  const [monthsCurrentJob, setMonthsCurrentJob] = useState<string>("");
+  const [isProbationary, setIsProbationary] = useState<"no" | "yes" | "unsure">("unsure");
+  const [hasRentHistory, setHasRentHistory] = useState<"unsure" | "yes" | "no">("unsure");
+  const [reservesSeasoned, setReservesSeasoned] = useState<"unsure" | "yes" | "no">("unsure");
+  const [isRural, setIsRural] = useState<"unsure" | "yes" | "no">("unsure");
+  const [largeDepositCount, setLargeDepositCount] = useState<string>("");
+  const [largeDepositTotal, setLargeDepositTotal] = useState<string>("");
+  const [condoLitigation, setCondoLitigation] = useState<"unsure" | "yes" | "no">("unsure");
+  const [condoInvestorHigh, setCondoInvestorHigh] = useState<"unsure" | "yes" | "no">("unsure");
+  const [condoDelinquency, setCondoDelinquency] = useState<"unsure" | "yes" | "no">("unsure");
+  const [mfdLeasedLand, setMfdLeasedLand] = useState<"unsure" | "yes" | "no">("unsure");
+  const [mfdSingleWide, setMfdSingleWide] = useState<"unsure" | "yes" | "no">("unsure");
+  const [mfdPre1976, setMfdPre1976] = useState<"unsure" | "yes" | "no">("unsure");
+  const [mfdFoundation, setMfdFoundation] = useState<"unsure" | "yes" | "no">("unsure");
 
   const num = (s: string) => {
     const n = Number(s);
@@ -207,6 +223,11 @@ export function Questionnaire() {
       if (hasCosignedDebt === "yes" && (cosignedPayment.trim() === "" || !Number.isFinite(Number(cosignedPayment)))) {
         next.cosignedPayment = "Please enter the monthly payment on the debt you cosigned.";
       }
+      if (revolvingBalance.trim() !== "" && revolvingLimit.trim() !== "") {
+        if (Number(revolvingLimit) > 0 && Number(revolvingBalance) > Number(revolvingLimit)) {
+          next.revolvingLimit = "The total limit looks lower than the balance — please double-check the numbers.";
+        }
+      }
     }
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -281,6 +302,24 @@ export function Questionnaire() {
     if (otherDebt > 0) {
       itemizedDebts.push({ kind: "other", actualMonthlyPayment: otherDebt });
     }
+    // Stress-test P2: property-review flags feed the obstacle engine
+    const condoConcerns =
+      propertyType === PropertyType.CONDO_WARRANTABLE || propertyType === PropertyType.CONDO_NONWARRANTABLE
+        ? {
+            pendingLitigation: condoLitigation === "yes",
+            investorOwnershipHigh: condoInvestorHigh === "yes",
+            ownerDelinquencyHigh: condoDelinquency === "yes",
+          }
+        : undefined;
+    const manufacturedConcerns =
+      propertyType === PropertyType.MANUFACTURED
+        ? {
+            leasedLand: mfdLeasedLand === "yes",
+            singleWide: mfdSingleWide === "yes",
+            builtBefore1976: mfdPre1976 === "yes",
+            noPermanentFoundation: mfdFoundation === "yes",
+          }
+        : undefined;
 
     const inputs: EngineInputs = {
       loanPurpose,
@@ -329,6 +368,17 @@ export function Questionnaire() {
       hasGiftFundsDocumented: hasGiftFunds === "yes" && num(giftFundsAmount) > 0,
       giftFundsAmount: hasGiftFunds === "yes" && giftFundsAmount.trim() !== "" ? num(giftFundsAmount) : null,
       isFirstTimeBuyer: isFirstTimeBuyer === "yes" ? true : isFirstTimeBuyer === "no" ? false : undefined,
+      // Stress-test P2: utilization, tenure, housing history, reserves, rural
+      revolvingCreditLimit: revolvingLimit.trim() !== "" ? num(revolvingLimit) : null,
+      employmentMonthsCurrentJob: monthsCurrentJob.trim() !== "" ? num(monthsCurrentJob) : null,
+      isProbationary: isProbationary === "yes",
+      hasOnTimeHousingHistory12mo: hasRentHistory === "yes",
+      reservesSeasoned60Days: reservesSeasoned === "yes" ? true : reservesSeasoned === "no" ? false : undefined,
+      isRuralArea: isRural,
+      largeDepositCount: largeDepositCount.trim() !== "" ? num(largeDepositCount) : null,
+      largeDepositTotal: largeDepositTotal.trim() !== "" ? num(largeDepositTotal) : null,
+      condoConcerns,
+      manufacturedConcerns,
       state: "FL", // V1 geofenced to Florida
     };
     // Auto-select documentation type when cash income is reported
@@ -392,10 +442,10 @@ export function Questionnaire() {
                   aria-hidden="true"
                   className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
                     state === "current"
-                      ? "bg-warm-700 text-white ring-2 ring-sage-600 ring-offset-2 ring-offset-sand-50"
+                      ? "bg-accent text-accent-text ring-2 ring-sage-600 ring-offset-2 ring-offset-sand-50"
                       : state === "done"
-                        ? "bg-sage-600 text-white"
-                        : "bg-white text-warm-500 border border-sand-200"
+                        ? "bg-accent text-accent-text"
+                        : "bg-surface text-warm-500 border border-sand-200"
                   }`}
                 >
                   {state === "done" ? "✓" : idx + 1}
@@ -422,7 +472,7 @@ export function Questionnaire() {
 
       {/* ── Step 1 · About the home ─────────────────────────────── */}
       {step === 0 && (
-        <fieldset className="rounded-2xl border border-sand-200 bg-white p-6 shadow-sm">
+        <fieldset className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm">
           <legend className="px-2 text-base font-semibold text-warm-900">1 · About your goal</legend>
           <p className="mb-4 text-sm text-warm-700">{STEP_INTROS.goal}</p>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -475,7 +525,7 @@ export function Questionnaire() {
 
       {/* ── Step 2 · Income ─────────────────────────────────────── */}
       {step === 1 && (
-        <fieldset className="rounded-2xl border border-sand-200 bg-white p-6 shadow-sm">
+        <fieldset className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm">
           <legend className="px-2 text-base font-semibold text-warm-900">2 · Income</legend>
           <p className="mb-4 text-sm text-warm-700">{STEP_INTROS.income}</p>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -561,6 +611,34 @@ export function Questionnaire() {
                 onChange={(e) => setYearsEmployed(e.target.value)}
               />
             </Field>
+            {/* Stress-test P2: current-job tenure + probationary status */}
+            <Field id="q-months-job" label="Months in your current job (optional)">
+              <input
+                id="q-months-job"
+                className={inputCls}
+                inputMode="numeric"
+                maxLength={3}
+                placeholder="e.g. 14"
+                value={monthsCurrentJob}
+                onChange={(e) => setMonthsCurrentJob(e.target.value)}
+              />
+            </Field>
+            <Field
+              id="q-probationary"
+              label="Are you still in a probationary or introductory period at work?"
+              help="Many lenders wait until it ends — or look for a strong history in the same field — before counting the income."
+            >
+              <select
+                id="q-probationary"
+                className={inputCls}
+                value={isProbationary}
+                onChange={(e) => setIsProbationary(e.target.value as "no" | "yes" | "unsure")}
+              >
+                <option value="unsure">Not sure</option>
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+              </select>
+            </Field>
             {/* Stress-test P1: income trend — declining income is underwritten at the recent level */}
             <Field
               id="q-income-trend"
@@ -617,7 +695,7 @@ export function Questionnaire() {
 
       {/* ── Step 3 · Credit ─────────────────────────────────────── */}
       {step === 2 && (
-        <fieldset className="rounded-2xl border border-sand-200 bg-white p-6 shadow-sm">
+        <fieldset className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm">
           <legend className="px-2 text-base font-semibold text-warm-900">3 · Credit</legend>
           <p className="mb-4 text-sm text-warm-700">A rough range is enough — we never pull your credit.</p>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -692,13 +770,31 @@ export function Questionnaire() {
                 />
               </Field>
             )}
+            {/* Stress-test P2: documented housing history — the strongest
+                non-FICO signal, especially for thin files */}
+            <Field
+              id="q-rent-history"
+              label="Have you made 12+ months of on-time rent or housing payments you can document?"
+              help="Bank or app statements showing on-time payments count. Lenders view this as a strong sign, especially with a shorter credit history."
+            >
+              <select
+                id="q-rent-history"
+                className={inputCls}
+                value={hasRentHistory}
+                onChange={(e) => setHasRentHistory(e.target.value as "unsure" | "yes" | "no")}
+              >
+                <option value="unsure">Not sure</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </Field>
           </div>
         </fieldset>
       )}
 
       {/* ── Step 4 · Money ──────────────────────────────────────── */}
       {step === 3 && (
-        <fieldset className="rounded-2xl border border-sand-200 bg-white p-6 shadow-sm">
+        <fieldset className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm">
           <legend className="px-2 text-base font-semibold text-warm-900">4 · Debts &amp; savings</legend>
           <p className="mb-4 text-sm text-warm-700">{STEP_INTROS.money}</p>
           <div className="grid gap-4 sm:grid-cols-3">
@@ -884,6 +980,26 @@ export function Questionnaire() {
                 onChange={(e) => setRevolvingBalance(e.target.value)}
               />
             </Field>
+            {revolvingBalance.trim() !== "" && (
+              <Field
+                id="q-revolving-limit"
+                label="Total credit limit across those cards (optional)"
+                help="Balances near the limits can hold the score down even with perfect payment history — paying below 30% of the limits helps fastest."
+                error={errors.revolvingLimit}
+              >
+                <input
+                  id="q-revolving-limit"
+                  className={inputCls}
+                  inputMode="numeric"
+                  maxLength={9}
+                  placeholder="e.g. 20000"
+                  value={revolvingLimit}
+                  aria-invalid={errors.revolvingLimit ? true : undefined}
+                  aria-describedby={errors.revolvingLimit ? "q-revolving-limit-error" : undefined}
+                  onChange={(e) => setRevolvingLimit(e.target.value)}
+                />
+              </Field>
+            )}
             <Field id="q-down-payment" label="Down payment you have saved">
               <input
                 id="q-down-payment"
@@ -906,6 +1022,25 @@ export function Questionnaire() {
                 onChange={(e) => setLiquid(e.target.value)}
               />
             </Field>
+            {/* Stress-test P2: reserve seasoning */}
+            {liquid.trim() !== "" && (
+              <Field
+                id="q-reserves-seasoned"
+                label="Has that money been in your account for at least 60 days?"
+                help="Lenders count funds that have been seasoned 60+ days (or fully documented) toward reserves."
+              >
+                <select
+                  id="q-reserves-seasoned"
+                  className={inputCls}
+                  value={reservesSeasoned}
+                  onChange={(e) => setReservesSeasoned(e.target.value as "unsure" | "yes" | "no")}
+                >
+                  <option value="unsure">Not sure</option>
+                  <option value="yes">Yes, 60+ days</option>
+                  <option value="no">No, some is recent</option>
+                </select>
+              </Field>
+            )}
             {propertyUse === PropertyUse.INVESTMENT && (
               <Field
                 id="q-rent"
@@ -962,6 +1097,124 @@ export function Questionnaire() {
                 <option value="yes">Yes</option>
               </select>
             </Field>
+            {/* Stress-test P2: USDA rural eligibility */}
+            {loanType === LoanType.USDA && (
+              <Field
+                id="q-rural"
+                label="Is the property in a rural area or small town?"
+                help="USDA loans only apply in eligible rural areas — the USDA map online can confirm the address."
+              >
+                <select
+                  id="q-rural"
+                  className={inputCls}
+                  value={isRural}
+                  onChange={(e) => setIsRural(e.target.value as "unsure" | "yes" | "no")}
+                >
+                  <option value="unsure">Not sure</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No, it's in a city or suburb</option>
+                </select>
+              </Field>
+            )}
+            {/* Stress-test P2: large-deposit sourcing detail */}
+            <Field
+              id="q-large-deposits"
+              label="Any large deposits (over about half a month's income) in the last 2 months? (optional)"
+              help="Lenders ask for paperwork showing where big deposits came from — the count and amount help size that request."
+            >
+              <input
+                id="q-large-deposits"
+                className={inputCls}
+                inputMode="numeric"
+                maxLength={3}
+                placeholder="How many? e.g. 2 (0 if none)"
+                value={largeDepositCount}
+                onChange={(e) => setLargeDepositCount(e.target.value)}
+              />
+            </Field>
+            {largeDepositCount.trim() !== "" && num(largeDepositCount) > 0 && (
+              <Field id="q-large-deposit-total" label="Roughly how much in total? (optional)">
+                <input
+                  id="q-large-deposit-total"
+                  className={inputCls}
+                  inputMode="numeric"
+                  maxLength={12}
+                  placeholder="e.g. 15000"
+                  value={largeDepositTotal}
+                  onChange={(e) => setLargeDepositTotal(e.target.value)}
+                />
+              </Field>
+            )}
+            {/* Stress-test P2: condo building review */}
+            {(propertyType === PropertyType.CONDO_WARRANTABLE || propertyType === PropertyType.CONDO_NONWARRANTABLE) && (
+              <>
+                <Field
+                  id="q-condo-litigation"
+                  label="Is the condo association in any lawsuits or disputes? (optional)"
+                  help="Pending litigation is one of the most common reasons a condo building fails lender review."
+                >
+                  <select id="q-condo-litigation" className={inputCls} value={condoLitigation} onChange={(e) => setCondoLitigation(e.target.value as "unsure" | "yes" | "no")}>
+                    <option value="unsure">Not sure</option>
+                    <option value="no">No</option>
+                    <option value="yes">Yes</option>
+                  </select>
+                </Field>
+                <Field
+                  id="q-condo-investor"
+                  label="Are most units owner-occupied, or rented out by investors? (optional)"
+                  help="Buildings where more than about a quarter of units are investor-owned or one company owns many units often fail review."
+                >
+                  <select id="q-condo-investor" className={inputCls} value={condoInvestorHigh} onChange={(e) => setCondoInvestorHigh(e.target.value as "unsure" | "yes" | "no")}>
+                    <option value="unsure">Not sure</option>
+                    <option value="no">Mostly owner-occupied</option>
+                    <option value="yes">Mostly rented / one owner owns several</option>
+                  </select>
+                </Field>
+                <Field
+                  id="q-condo-delinquency"
+                  label="Are many owners behind on their HOA dues? (optional)"
+                >
+                  <select id="q-condo-delinquency" className={inputCls} value={condoDelinquency} onChange={(e) => setCondoDelinquency(e.target.value as "unsure" | "yes" | "no")}>
+                    <option value="unsure">Not sure</option>
+                    <option value="no">No / few</option>
+                    <option value="yes">Yes, many</option>
+                  </select>
+                </Field>
+              </>
+            )}
+            {/* Stress-test P2: manufactured eligibility checklist */}
+            {propertyType === PropertyType.MANUFACTURED && (
+              <>
+                <Field id="q-mfd-land" label="Do you own the land, or is it a leased lot / park space?">
+                  <select id="q-mfd-land" className={inputCls} value={mfdLeasedLand} onChange={(e) => setMfdLeasedLand(e.target.value as "unsure" | "yes" | "no")}>
+                    <option value="unsure">Not sure</option>
+                    <option value="no">I own (or am buying) the land</option>
+                    <option value="yes">Leased lot or park space</option>
+                  </select>
+                </Field>
+                <Field id="q-mfd-width" label="Is it a single-wide or multi-section home?">
+                  <select id="q-mfd-width" className={inputCls} value={mfdSingleWide} onChange={(e) => setMfdSingleWide(e.target.value as "unsure" | "yes" | "no")}>
+                    <option value="unsure">Not sure</option>
+                    <option value="no">Double-wide or larger</option>
+                    <option value="yes">Single-wide</option>
+                  </select>
+                </Field>
+                <Field id="q-mfd-year" label="Was it built before 1976?">
+                  <select id="q-mfd-year" className={inputCls} value={mfdPre1976} onChange={(e) => setMfdPre1976(e.target.value as "unsure" | "yes" | "no")}>
+                    <option value="unsure">Not sure</option>
+                    <option value="no">No, 1976 or later</option>
+                    <option value="yes">Yes</option>
+                  </select>
+                </Field>
+                <Field id="q-mfd-foundation" label="Is it attached to a permanent foundation?">
+                  <select id="q-mfd-foundation" className={inputCls} value={mfdFoundation} onChange={(e) => setMfdFoundation(e.target.value as "unsure" | "yes" | "no")}>
+                    <option value="unsure">Not sure</option>
+                    <option value="no">Yes, permanent foundation</option>
+                    <option value="yes">No, on blocks/wheels</option>
+                  </select>
+                </Field>
+              </>
+            )}
             {/* P19: gift funds + first-time buyer */}
             <Field id="q-gift" label="Will any of the down payment be a gift? (optional)" help="A documented gift from a relative is allowed on many programs — this just helps the estimate.">
               <select
@@ -1054,7 +1307,7 @@ export function Questionnaire() {
           <button
             type="button"
             onClick={onBack}
-            className="rounded-full border border-sand-200 bg-white px-6 py-3 text-sm font-medium text-warm-700 transition hover:border-sage-600 hover:bg-sand-50 focus:outline-none focus:ring-2 focus:ring-sage-600 focus:ring-offset-2"
+            className="rounded-full border border-sand-200 bg-surface px-6 py-3 text-sm font-medium text-warm-700 transition hover:border-sage-600 hover:bg-sand-50 focus:outline-none focus:ring-2 focus:ring-sage-600 focus:ring-offset-2"
           >
             ← Back
           </button>
@@ -1065,14 +1318,14 @@ export function Questionnaire() {
           <button
             type="button"
             onClick={onNext}
-            className="rounded-full bg-warm-700 px-8 py-3 text-sm font-semibold text-white transition hover:bg-warm-900 focus:outline-none focus:ring-2 focus:ring-sage-600 focus:ring-offset-2"
+            className="rounded-full bg-accent px-8 py-3 text-sm font-semibold text-accent-text transition hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-sage-600 focus:ring-offset-2"
           >
             Next →
           </button>
         ) : (
           <button
             type="submit"
-            className="rounded-full bg-warm-700 px-8 py-3.5 text-base font-semibold text-white transition hover:bg-warm-900 focus:outline-none focus:ring-2 focus:ring-sage-600 focus:ring-offset-2"
+            className="rounded-full bg-accent px-8 py-3.5 text-base font-semibold text-accent-text transition hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-sage-600 focus:ring-offset-2"
           >
             See my readiness snapshot
           </button>

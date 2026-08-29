@@ -72,6 +72,36 @@ export function identifyObstacles(
     });
   }
 
+  // 6b. Probationary / very short tenure in the CURRENT job (stress-test P2,
+  // INCOME-06): underwriters want income likely to continue; a new job still
+  // in an introductory period can't be verified as stable yet.
+  if (i.isProbationary) {
+    obstacles.push({
+      rank: rank++, category: "documentation", severity: "primary",
+      description:
+        "Employment is still within a probationary or introductory period; most lenders wait until it ends, or need a strong history in the same field, before counting the income.",
+      fixHorizon: "0-3 months",
+    });
+  } else if (i.employmentMonthsCurrentJob != null && i.employmentMonthsCurrentJob < 6) {
+    obstacles.push({
+      rank: rank++, category: "documentation", severity: "secondary",
+      description:
+        "Less than six months in the current job; a signed offer letter and strong history in the same field help the lender verify the income will continue.",
+      fixHorizon: "0-3 months",
+    });
+  }
+
+  // 6c. USDA rural gate (stress-test P2, PROP-07): when the borrower picked
+  // USDA but the property is known to be non-rural, the program can't apply.
+  if (i.loanType === LoanType.USDA && i.isRuralArea === "no") {
+    obstacles.push({
+      rank: rank++, category: "property", severity: "primary",
+      description:
+        "USDA financing applies to eligible rural areas; the property location you indicated does not qualify, so other programs would be a better fit.",
+      fixHorizon: "out_of_user_control",
+    });
+  }
+
   // 7. Non-warrantable condo for government programs
   if (
     i.propertyType === PropertyType.CONDO_NONWARRANTABLE &&
@@ -105,6 +135,39 @@ export function identifyObstacles(
         "Manufactured homes must sit on owned land with a permanent foundation and typically must be a multi-section (double-wide or larger) home built after 1976 to use most standard loan programs.",
       fixHorizon: "out_of_user_control",
     });
+    // Specific disqualifiers when the questionnaire collected them (P2).
+    const m = i.manufacturedConcerns;
+    if (m && (m.leasedLand || m.singleWide || m.builtBefore1976 || m.noPermanentFoundation)) {
+      const issues = [
+        m.leasedLand ? "the home sits on leased land" : null,
+        m.singleWide ? "it is a single-wide unit" : null,
+        m.builtBefore1976 ? "it was built before 1976" : null,
+        m.noPermanentFoundation ? "there is no permanent foundation" : null,
+      ].filter(Boolean);
+      obstacles.push({
+        rank: rank++, category: "property", severity: "primary",
+        description: `This manufactured home likely does not qualify for standard financing because ${issues.join(", ")}.`,
+        fixHorizon: "out_of_user_control",
+      });
+    }
+  }
+
+  // 7c-b. Condominium review flags (stress-test P2, PROP-01/PROP-04): the
+  // building itself — not the borrower — often drives the outcome.
+  const c = i.condoConcerns;
+  if (i.propertyType === PropertyType.CONDO_NONWARRANTABLE || (c && (c.pendingLitigation || c.investorOwnershipHigh || c.ownerDelinquencyHigh))) {
+    const issues = [
+      c?.pendingLitigation ? "pending litigation" : null,
+      c?.investorOwnershipHigh ? "a high share of investor-owned or single-entity units" : null,
+      c?.ownerDelinquencyHigh ? "many owners behind on association dues" : null,
+    ].filter(Boolean);
+    if (issues.length > 0) {
+      obstacles.push({
+        rank: rank++, category: "property", severity: "primary",
+        description: `The condo association has ${issues.join(" and ")}, which fails most standard loan program review; a few specialized lenders still finance buildings like this.`,
+        fixHorizon: "out_of_user_control",
+      });
+    }
   }
 
   // 7d. Investor multi-family down-payment floor (stress-test P1, PROP-03):
@@ -152,6 +215,33 @@ export function identifyObstacles(
     });
   }
 
+  // 8b. Unseasoned reserves (stress-test P2, CASH-01/07): large recent
+  // deposits need 60+ days of seasoning to count as reserves.
+  if (i.reservesSeasoned60Days === false && (i.liquidAssetsAfterClose ?? 0) > 0) {
+    obstacles.push({
+      rank: rank++, category: "cash", severity: "secondary",
+      description:
+        "Some of the savings you listed were deposited recently; lenders usually require funds to be in the account for at least 60 days (or fully documented) before counting them.",
+      fixHorizon: "0-3 months",
+    });
+  }
+
+  // 8c. VA residual-income hint (stress-test P3, CASH-06): VA has no hard
+  // DTI cap but expects residual income; 41-50% back-end on a VA loan gets a
+  // pointer at the manual path instead of a plain DTI failure.
+  if (
+    i.loanType === LoanType.VA &&
+    (sub.debt?.score ?? 100) < 50 &&
+    (sub.debt?.score ?? 100) >= 30
+  ) {
+    obstacles.push({
+      rank: rank++, category: "debt", severity: "secondary",
+      description:
+        "For VA loans, lenders can also look at residual income — the money left each month after taxes and living costs. A closer budget review sometimes works when the ratio alone looks tight.",
+      fixHorizon: "0-3 months",
+    });
+  }
+
   const primary = obstacles[0] ?? null;
   const secondary = obstacles.slice(1, 4).map((o, idx) => ({ ...o, rank: idx + 1, severity: "secondary" as const }));
 
@@ -166,6 +256,21 @@ export function identifyObstacles(
   }
   if (i.targetPurchasePrice && i.targetPurchasePrice > 0 && i.downPaymentAvailable / i.targetPurchasePrice >= 0.2) {
     strengths.push({ rank: sRank++, category: "cash", description: "A down payment of 20% or more typically removes the need for mortgage insurance." });
+  }
+  // Documented housing history (stress-test P2): the strongest non-FICO
+  // signal available to thin-file and fair-credit borrowers.
+  if (i.hasOnTimeHousingHistory12mo) {
+    strengths.push({
+      rank: sRank++, category: "documentation",
+      description: "A documented year of on-time housing payments is a strong sign for lenders, especially with a shorter credit history.",
+    });
+  }
+  // Seasoned reserves (stress-test P2)
+  if (i.reservesSeasoned60Days && (i.liquidAssetsAfterClose ?? 0) > 0) {
+    strengths.push({
+      rank: sRank++, category: "cash",
+      description: "Savings that have been in your account for 60+ days count fully toward reserves.",
+    });
   }
 
   return { primary, secondary, strengths };

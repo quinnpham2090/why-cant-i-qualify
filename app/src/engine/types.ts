@@ -187,6 +187,36 @@ export interface EngineInputs {
   coBorrowerIncome?: number | null;
   coBorrowerCredit?: number | null;
 
+  // Stress-test P2 additions — each wires a real underwriting rule
+  /** Months in the CURRENT job (not field). */
+  employmentMonthsCurrentJob?: number | null;
+  /** Still within a probationary/introductory employment period. */
+  isProbationary?: boolean;
+  /** 12+ months of documented on-time rent/housing payments. */
+  hasOnTimeHousingHistory12mo?: boolean;
+  /** Whether the property is in a USDA-eligible rural area. */
+  isRuralArea?: "yes" | "no" | "unsure";
+  /** Credit-card utilization inputs (balance comes via debts[] revolving). */
+  revolvingCreditLimit?: number | null;
+  /** Documented 60+ day seasoning on post-close reserves. */
+  reservesSeasoned60Days?: boolean;
+  /** Condominium review flags (warrantability drivers). */
+  condoConcerns?: {
+    pendingLitigation?: boolean;
+    investorOwnershipHigh?: boolean; // >20-25% single entity / investor-owned
+    ownerDelinquencyHigh?: boolean; // >15% owners behind on dues
+  };
+  /** Manufactured-home eligibility flags. */
+  manufacturedConcerns?: {
+    leasedLand?: boolean;
+    singleWide?: boolean;
+    builtBefore1976?: boolean;
+    noPermanentFoundation?: boolean;
+  };
+  /** Count/total of large recent deposits needing sourcing (extends boolean). */
+  largeDepositCount?: number | null;
+  largeDepositTotal?: number | null;
+
   // Itemized debts (optional; falls back to totalMonthlyDebtPayments)
   debts?: Debt[];
 }

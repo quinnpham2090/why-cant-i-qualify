@@ -14,7 +14,7 @@ export default function CheckPage() {
         <h1 className="text-3xl font-semibold tracking-tight">
           Your free mortgage readiness check
         </h1>
-        <p className="mx-auto mt-3 max-w-xl text-neutral-600">
+        <p className="mx-auto mt-3 max-w-xl text-text-body">
           A few quick questions, an educational snapshot. No credit pull, no Social
           Security number, about five minutes.
         </p>
