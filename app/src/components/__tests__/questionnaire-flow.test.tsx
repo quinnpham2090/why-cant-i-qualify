@@ -92,7 +92,12 @@ describe("wizard walkthrough — every step must be passable", () => {
     click(buttonByText("Next →"));
     await flush();
 
-    // ── Step 2: Background — the user-reported dead end ─────────────────────
+    // ── Step 2: Programs (all optional; defaults valid) ─────────────────────
+    expect(stepLegend()).toContain("Programs you may qualify for");
+    click(buttonByText("Next →"));
+    await flush();
+
+    // ── Step 3: Background — the user-reported dead end ─────────────────────
     expect(stepLegend()).toContain("Your background");
     for (const b of allChoiceButtons()) click(b); // select every box
     typeInto(inputById("q-years-employed"), "5");
@@ -134,6 +139,8 @@ describe("wizard walkthrough — every step must be passable", () => {
     await render(<Questionnaire />);
     click(buttonByText("Next →"));
     await flush();
+    click(buttonByText("Next →")); // through Programs
+    await flush();
     expect(stepLegend()).toContain("Your background");
 
     typeInto(inputById("q-years-employed"), "");
@@ -146,6 +153,8 @@ describe("wizard walkthrough — every step must be passable", () => {
   it("Background: rejects a non-numeric years value with a visible error, then recovers", async () => {
     await render(<Questionnaire />);
     click(buttonByText("Next →"));
+    await flush();
+    click(buttonByText("Next →")); // through Programs
     await flush();
 
     typeInto(inputById("q-years-employed"), "abc");

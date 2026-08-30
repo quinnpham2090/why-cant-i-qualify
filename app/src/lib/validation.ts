@@ -25,24 +25,25 @@ export interface QuestionnaireState {
   homeValue: string;
   /** Refi: current loan balance / payoff (optional). */
   payoff: string;
-  // Step 1 — Background
+  // Step 1 — Programs (no validated fields; choice groups only)
+  // Step 2 — Background
   yearsEmployed: string;
   monthsCurrentJob: string;
-  // Step 2 — Income
+  // Step 3 — Income
   income: string;
   hasCashIncome: "yes" | "no" | "unsure";
   cashPortion: string;
   hasSideBusiness: "no" | "yes";
   sideBusinessNet: string;
-  // Step 3 — Co-borrower
+  // Step 4 — Co-borrower
   hasCoBorrower: "no" | "yes";
   coBorrowerIncome: string;
-  // Step 4 — Credit
+  // Step 5 — Credit
   knowsScore: "yes" | "no";
   creditScore: string;
   creditEvent: CreditEvent;
   yearsSinceCreditEvent: string;
-  // Step 5 — Assets
+  // Step 6 — Assets
   downPayment: string;
   liquid: string;
   totalAssets: string;
@@ -52,7 +53,7 @@ export interface QuestionnaireState {
   hasGiftFunds: "no" | "yes";
   giftFundsAmount: string;
   monthlyRent: string;
-  // Step 6 — Debt
+  // Step 7 — Debt
   debt: string;
   hasStudentLoan: "no" | "yes";
   studentLoanBalance: string;
@@ -68,7 +69,7 @@ export interface QuestionnaireState {
 
 export type StepErrors = Record<string, string>;
 
-export const STEP_COUNT = 7;
+export const STEP_COUNT = 8;
 
 const isBlank = (s: string): boolean => s.trim() === "";
 
@@ -142,8 +143,14 @@ export function validateStepFields(s: QuestionnaireState, step: number): StepErr
       break;
     }
 
-    // ── Step 1: Background ──────────────────────────────────────────────────
-    case 1: {
+    // ── Step 1: Programs ─────────────────────────────────────────────────────
+    // Residency/veteran/tribal/medical/AMI fields are all choice groups with
+    // safe defaults — nothing to validate.
+    case 1:
+      break;
+
+    // ── Step 2: Background ──────────────────────────────────────────────────
+    case 2: {
       checkOptionalRange(
         e, "yearsEmployed", s.yearsEmployed, 0, 50,
         "Please enter years in your field as a number between 0 and 50.",
@@ -155,8 +162,8 @@ export function validateStepFields(s: QuestionnaireState, step: number): StepErr
       break;
     }
 
-    // ── Step 2: Income ──────────────────────────────────────────────────────
-    case 2: {
+    // ── Step 3: Income ──────────────────────────────────────────────────────
+    case 3: {
       const income = numOrNull(s.income);
       if (income == null || income <= 0) {
         e.income = "Please enter your gross monthly income — a rough number is fine.";
@@ -179,8 +186,8 @@ export function validateStepFields(s: QuestionnaireState, step: number): StepErr
       break;
     }
 
-    // ── Step 3: Co-borrower ─────────────────────────────────────────────────
-    case 3: {
+    // ── Step 4: Co-borrower ─────────────────────────────────────────────────
+    case 4: {
       if (s.hasCoBorrower === "yes") {
         checkOptionalRange(
           e, "coBorrowerIncome", s.coBorrowerIncome, 0, 1_000_000,
@@ -190,8 +197,8 @@ export function validateStepFields(s: QuestionnaireState, step: number): StepErr
       break;
     }
 
-    // ── Step 4: Credit ──────────────────────────────────────────────────────
-    case 4: {
+    // ── Step 5: Credit ──────────────────────────────────────────────────────
+    case 5: {
       if (s.knowsScore === "yes") {
         checkRequiredRange(
           e, "creditScore", s.creditScore, 300, 850,
@@ -207,8 +214,8 @@ export function validateStepFields(s: QuestionnaireState, step: number): StepErr
       break;
     }
 
-    // ── Step 5: Assets ──────────────────────────────────────────────────────
-    case 5: {
+    // ── Step 6: Assets ──────────────────────────────────────────────────────
+    case 6: {
       checkOptionalRange(
         e, "downPayment", s.downPayment, 0, 10_000_000,
         "Please enter your down payment savings as a number (0 if none yet).",
@@ -248,8 +255,8 @@ export function validateStepFields(s: QuestionnaireState, step: number): StepErr
       break;
     }
 
-    // ── Step 6: Debt ────────────────────────────────────────────────────────
-    case 6: {
+    // ── Step 7: Debt ────────────────────────────────────────────────────────
+    case 7: {
       checkOptionalRange(
         e, "debt", s.debt, 0, 1_000_000,
         "Please enter your total monthly debt payments as a number (0 if none).",

@@ -1,32 +1,44 @@
 @import "tailwindcss";
 
 /*
- * Light editorial design system — neutral white & gray monochrome.
+ * Light editorial design system — neutral white & gray monochrome with ONE
+ * warm brand accent.
  *
- * Replaces the earlier warm paper/cobalt palette. The language stays
- * editorial: pure white canvas, neutral grays, hairline rules instead of
- * card shadows, oversized display serif headlines (Instrument Serif), Geist
- * for body, Geist Mono uppercase eyebrows and tabular financial figures.
- * All accents (hover, focus, progress, highlights) are neutral grays —
- * strictly monochrome by design.
+ * The language stays editorial: pure white canvas, neutral grays, hairline
+ * rules instead of card shadows, oversized display serif headlines (Instrument
+ * Serif), Geist for body, Geist Mono uppercase eyebrows and tabular financial
+ * figures. A single deep-green accent (--brand) is reserved for primary CTAs,
+ * progress/selected states, and section numbering — warmth and forward motion
+ * without turning the page into a themed template.
  *
  * Compliance invariants preserved:
  *  - alarm red is reserved for form errors, never for result-tier badges;
+ *  - result-tier badges stay strictly neutral (color never implies outcome);
  *  - color is never the only signal (labels + icons accompany every badge);
  *  - dark mode keeps AA contrast (body ≥ 7:1, secondary ≥ 4.5:1).
  */
 :root {
+  /* Height of the sticky global Header — the questionnaire's sticky progress
+     bar offsets below it (top-[var(--header-h)]) so the two never overlap.
+     Header = 16px top/bottom padding + 36px CTA row = 68px. Update both
+     together if the Header's vertical metrics ever change. */
+  --header-h: 68px;
+
   --paper: #ffffff; /* page canvas — pure white */
   --paper-2: #f5f5f5; /* recessed surface — neutral gray-100 */
   --card: #ffffff; /* raised surface */
-  --ink: #171717; /* primary text + primary buttons — neutral-900 */
+  --ink: #171717; /* primary text — neutral-900 */
   --ink-2: #525252; /* secondary text — neutral-600 */
   --ink-3: #6b6b6b; /* muted text, eyebrows, help text — AA on white (5.3:1) and paper-2 (4.9:1). Previously #8a8a8a (3.45:1 — WCAG 1.4.3 fail for the help/footnote text that uses it) */
   --rule: #e5e5e5; /* hairline — neutral-200 */
-  --accent: #404040; /* neutral accent — gray-700 */
+  --accent: #404040; /* neutral accent — gray-700 (non-CTA accents only) */
   --accent-strong: #262626; /* hover/pressed — gray-800 */
   --accent-soft: #f5f5f5; /* light gray tint surface */
   --on-accent: #ffffff;
+  --brand: #1e6b4e; /* deep green — primary CTAs, progress, selected states (5.9:1 on white) */
+  --brand-strong: #14523a; /* hover/pressed green */
+  --brand-soft: #e9f4ee; /* light green tint surface */
+  --on-brand: #ffffff;
   --error: #b3261e;
   --error-soft: #fcedec;
 }
@@ -44,6 +56,10 @@
     --accent-strong: #e5e5e5;
     --accent-soft: #1f1f1f;
     --on-accent: #0d0d0d;
+    --brand: #86cfa9; /* light green on dark canvas (10.3:1 with on-brand text) */
+    --brand-strong: #a3ddbe;
+    --brand-soft: #14291f;
+    --on-brand: #0d0d0d;
     --error: #f2b8b5;
     --error-soft: #2a1a19;
   }
@@ -61,6 +77,10 @@
   --color-accent-strong: var(--accent-strong);
   --color-accent-soft: var(--accent-soft);
   --color-on-accent: var(--on-accent);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-soft: var(--brand-soft);
+  --color-on-brand: var(--on-brand);
   --color-error: var(--error);
   --color-error-soft: var(--error-soft);
 
@@ -101,25 +121,24 @@ body {
   color: var(--ink-3);
 }
 
-/* Primary button: ink fill, cobalt on hover */
+/* Primary button: brand-green fill, darker green on hover */
 .btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 0.5rem;
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--brand);
+  color: var(--on-brand);
   padding: 0.875rem 2rem;
   font-size: 0.9375rem;
   font-weight: 500;
   transition: background-color 150ms ease;
 }
 .btn-primary:hover {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--brand-strong);
 }
 .btn-primary:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
 
@@ -141,7 +160,7 @@ body {
   border-color: var(--ink);
 }
 .btn-ghost:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
 

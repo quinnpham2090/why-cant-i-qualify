@@ -32,11 +32,12 @@ export const RESULTS_SUBHEAD =
  */
 export const HERO_HEADLINE = "Been told 'no' on a home loan?";
 export const HERO_SUBHEAD =
-  "Let's find out what's next. Get a free, no-credit-pull snapshot of where you may stand — and what may help.";
+  "Let's find out what's next. Get a free, no-credit-pull snapshot of where you may stand — built for Florida home buyers.";
 
 /** Questionnaire step-intro microcopy (RESEARCH_EMPATHY.md §6). */
 export const STEP_INTROS = {
   goal: "Let's start with what you're looking for.",
+  programs: "A few optional questions that can unlock special programs — skip anything you'd rather not answer.",
   income: "Your income — we won't judge it. We'll just match it to the right programs.",
   credit: "A quick note on credit — knowing a rough range is enough. We never pull your credit.",
   money: "Almost there — just the money questions, then your snapshot.",

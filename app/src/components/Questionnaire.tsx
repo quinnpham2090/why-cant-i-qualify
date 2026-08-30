@@ -27,7 +27,7 @@ import type { DiagnosticResult, EngineInputs } from "@/engine/types";
 import { ResultsView } from "@/components/ResultsView";
 
 const inputCls =
-  "w-full rounded-lg border border-rule bg-card px-3.5 py-3 text-base text-ink placeholder:text-ink-3 transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30";
+  "w-full rounded-lg border border-rule bg-card px-3.5 py-3 text-base text-ink placeholder:text-ink-3 transition-colors focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25";
 const labelCls = "mb-2 block text-sm font-medium text-ink";
 const helpCls = "mt-1.5 text-xs text-ink-3";
 const errorCls = "mt-1 text-xs font-medium text-error";
@@ -93,7 +93,7 @@ function ChoiceGroup<T extends string>({
           onClick={() => onChange(opt.value)}
           className={`flex flex-col text-left items-start justify-start p-4 rounded-lg border transition-colors ${
             value === opt.value
-              ? "border-ink bg-card ring-1 ring-ink"
+              ? "border-brand bg-card ring-1 ring-brand"
               : "border-rule bg-card hover:border-ink-3"
           }`}
         >
@@ -104,7 +104,7 @@ function ChoiceGroup<T extends string>({
   );
 }
 
-const STEP_NAMES = ["Goal", "Background", "Income", "Co-Borrower", "Credit", "Assets", "Debt"] as const;
+const STEP_NAMES = ["Goal", "Programs", "Background", "Income", "Co-Borrower", "Credit", "Assets", "Debt"] as const;
 
 /**
  * P10 analytics helper: coarse enum only (loan type + occupancy) so the
@@ -664,7 +664,7 @@ export function Questionnaire() {
 
       <nav
         aria-label="Progress"
-        className="sticky top-0 z-10 rounded-xl border border-rule bg-paper/90 p-4 backdrop-blur sm:p-5"
+        className="sticky top-[var(--header-h)] z-10 rounded-xl border border-rule bg-paper/90 p-4 backdrop-blur sm:p-5"
       >
         <ol className="hidden sm:flex items-center gap-2">
           {STEP_NAMES.map((name, idx) => {
@@ -675,9 +675,9 @@ export function Questionnaire() {
                   aria-hidden="true"
                   className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-mono text-[11px] font-medium transition-all ${
                     state === "current"
-                      ? "bg-ink text-paper scale-110 ring-2 ring-accent ring-offset-2 ring-offset-paper"
+                      ? "bg-brand text-on-brand scale-110 ring-2 ring-brand ring-offset-2 ring-offset-paper"
                       : state === "done"
-                        ? "bg-accent text-on-accent"
+                        ? "bg-brand-soft text-brand border border-brand/40"
                         : "bg-card text-ink-3 border border-rule"
                   }`}
                 >
@@ -695,7 +695,7 @@ export function Questionnaire() {
                   <span
                     aria-hidden="true"
                     className={`hidden h-px min-w-4 flex-1 rounded-full sm:block ${
-                      idx < step ? "bg-accent" : "bg-rule"
+                      idx < step ? "bg-brand" : "bg-rule"
                     }`}
                   />
                 )}
@@ -710,7 +710,7 @@ export function Questionnaire() {
           <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">{Math.round(((step + 1) / STEP_NAMES.length) * 100)}%</span>
         </div>
         <div className="sm:hidden mt-3 h-[3px] w-full overflow-hidden rounded-full bg-rule">
-          <div className="h-full rounded-full bg-accent transition-all duration-500" style={{ width: `${((step + 1) / STEP_NAMES.length) * 100}%` }} />
+          <div className="h-full rounded-full bg-brand transition-all duration-500" style={{ width: `${((step + 1) / STEP_NAMES.length) * 100}%` }} />
         </div>
       </nav>
 
@@ -754,29 +754,6 @@ export function Questionnaire() {
             </Field>
             <Field id="q-property-use" label="How will you use the home?">
               <ChoiceGroup id="q-property-use" value={propertyUse} onChange={setPropertyUse} options={[{ value: PropertyUse.PRIMARY, label: "Primary residence" }, { value: PropertyUse.SECOND_HOME, label: "Second home" }, { value: PropertyUse.INVESTMENT, label: "Investment property" }]} />
-            </Field>
-            <Field id="q-residency" label="What is your residency or immigration status?" help="This determines which loan programs you can use — for example FHA is limited to citizens and permanent residents. Nothing is shared with anyone.">
-              <ChoiceGroup id="q-residency" value={residencyStatus} onChange={setResidencyStatus} options={[{ value: ResidencyStatus.US_CITIZEN, label: "U.S. citizen" }, { value: ResidencyStatus.PERMANENT_RESIDENT, label: "Permanent resident (green card)" }, { value: ResidencyStatus.NON_PERMANENT_EAD, label: "Work visa / permit" }, { value: ResidencyStatus.NON_PERMANENT_NO_EAD, label: "Visa without work authorization" }, { value: ResidencyStatus.ITIN, label: "ITIN filer (no SSN)" }, { value: ResidencyStatus.FOREIGN_NATIONAL, label: "Foreign national" }, { value: ResidencyStatus.UNKNOWN, label: "Prefer not to say" }]} />
-            </Field>
-            {residencyStatus !== ResidencyStatus.US_CITIZEN && residencyStatus !== ResidencyStatus.UNKNOWN && (
-              <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l border-rule pl-5 ml-1">
-                <Field id="q-veteran" label="Have you served in the U.S. military? (veterans and surviving spouses)" help="VA loans are earned through military service, regardless of citizenship status.">
-                  <ChoiceGroup id="q-veteran" value={isVeteran} onChange={setIsVeteran} options={[{ value: "unsure", label: "Prefer not to say" }, { value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
-                </Field>
-              </div>
-            )}
-            {(residencyStatus === ResidencyStatus.US_CITIZEN || residencyStatus === ResidencyStatus.PERMANENT_RESIDENT || residencyStatus === ResidencyStatus.NON_PERMANENT_EAD) && (
-              <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l border-rule pl-5 ml-1">
-                <Field id="q-tribal" label="Are you an enrolled member of a federally recognized tribe?" help="Section 184 loans offer low down payments for tribal members, on or off tribal land.">
-                  <ChoiceGroup id="q-tribal" value={isTribalMember} onChange={setIsTribalMember} options={[{ value: "unsure", label: "Not sure" }, { value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
-                </Field>
-              </div>
-            )}
-            <Field id="q-medical" label="Are you a licensed medical professional (MD, DO, DDS, CRNA, PA, PharmD)?" help="Doctor loans offer little or no down payment before your income fully ramps up.">
-              <ChoiceGroup id="q-medical" value={isMedicalProfessional} onChange={setIsMedicalProfessional} options={[{ value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
-            </Field>
-            <Field id="q-ami" label="Is your total household income at or below the area average for your county?" help="Some 3%-down programs are reserved for moderate incomes. Not sure is fine — the loan officer can confirm.">
-              <ChoiceGroup id="q-ami" value={incomeAtOrBelow80Ami} onChange={setIncomeAtOrBelow80Ami} options={[{ value: "unsure", label: "Not sure" }, { value: "yes", label: "Yes, at or below" }, { value: "no", label: "No, above it" }]} />
             </Field>
             <Field id="q-loan-type" label="Loan type you're considering" help="Choose “Not sure” and we'll suggest options.">
               <ChoiceGroup id="q-loan-type" value={loanType} onChange={setLoanType} options={[{ value: LoanType.UNKNOWN, label: "Not sure yet" }, { value: LoanType.CONVENTIONAL_CONF, label: "Conventional" }, { value: LoanType.FHA, label: "FHA" }, { value: LoanType.VA, label: "VA" }, { value: LoanType.USDA, label: "USDA" }]} />
@@ -824,6 +801,38 @@ export function Questionnaire() {
 
       {step === 1 && (
         <fieldset className="rounded-xl border border-rule bg-card p-6 sm:p-8 animate-in fade-in duration-300">
+          <legend className="px-2 font-display text-2xl text-ink">Programs you may qualify for</legend>
+          <p className="mb-6 text-sm text-ink-2">{STEP_INTROS.programs}</p>
+          <div className="flex flex-col gap-6">
+            <Field id="q-residency" label="What is your residency or immigration status?" help="This determines which loan programs you can use — for example FHA is limited to citizens and permanent residents. Nothing is shared with anyone.">
+              <ChoiceGroup id="q-residency" value={residencyStatus} onChange={setResidencyStatus} options={[{ value: ResidencyStatus.US_CITIZEN, label: "U.S. citizen" }, { value: ResidencyStatus.PERMANENT_RESIDENT, label: "Permanent resident (green card)" }, { value: ResidencyStatus.NON_PERMANENT_EAD, label: "Work visa / permit" }, { value: ResidencyStatus.NON_PERMANENT_NO_EAD, label: "Visa without work authorization" }, { value: ResidencyStatus.ITIN, label: "ITIN filer (no SSN)" }, { value: ResidencyStatus.FOREIGN_NATIONAL, label: "Foreign national" }, { value: ResidencyStatus.UNKNOWN, label: "Prefer not to say" }]} />
+            </Field>
+            {residencyStatus !== ResidencyStatus.US_CITIZEN && residencyStatus !== ResidencyStatus.UNKNOWN && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l border-rule pl-5 ml-1">
+                <Field id="q-veteran" label="Have you served in the U.S. military? (veterans and surviving spouses)" help="VA loans are earned through military service, regardless of citizenship status.">
+                  <ChoiceGroup id="q-veteran" value={isVeteran} onChange={setIsVeteran} options={[{ value: "unsure", label: "Prefer not to say" }, { value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
+                </Field>
+              </div>
+            )}
+            {(residencyStatus === ResidencyStatus.US_CITIZEN || residencyStatus === ResidencyStatus.PERMANENT_RESIDENT || residencyStatus === ResidencyStatus.NON_PERMANENT_EAD) && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l border-rule pl-5 ml-1">
+                <Field id="q-tribal" label="Are you an enrolled member of a federally recognized tribe?" help="Section 184 loans offer low down payments for tribal members, on or off tribal land.">
+                  <ChoiceGroup id="q-tribal" value={isTribalMember} onChange={setIsTribalMember} options={[{ value: "unsure", label: "Not sure" }, { value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
+                </Field>
+              </div>
+            )}
+            <Field id="q-medical" label="Are you a licensed medical professional (MD, DO, DDS, CRNA, PA, PharmD)?" help="Doctor loans offer little or no down payment before your income fully ramps up.">
+              <ChoiceGroup id="q-medical" value={isMedicalProfessional} onChange={setIsMedicalProfessional} options={[{ value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
+            </Field>
+            <Field id="q-ami" label="Is your total household income at or below the area average for your county?" help="Some 3%-down programs are reserved for moderate incomes. Not sure is fine — the loan officer can confirm.">
+              <ChoiceGroup id="q-ami" value={incomeAtOrBelow80Ami} onChange={setIncomeAtOrBelow80Ami} options={[{ value: "unsure", label: "Not sure" }, { value: "yes", label: "Yes, at or below" }, { value: "no", label: "No, above it" }]} />
+            </Field>
+          </div>
+        </fieldset>
+      )}
+
+      {step === 2 && (
+        <fieldset className="rounded-xl border border-rule bg-card p-6 sm:p-8 animate-in fade-in duration-300">
           <legend className="px-2 font-display text-2xl text-ink">Your background</legend>
           <p className="mb-6 text-sm text-ink-2">A bit about you — helps us match you to the right programs.</p>
           <div className="flex flex-col gap-6">
@@ -840,7 +849,7 @@ export function Questionnaire() {
         </fieldset>
       )}
 
-      {step === 2 && (
+      {step === 3 && (
         <fieldset className="rounded-xl border border-rule bg-card p-6 sm:p-8 animate-in fade-in duration-300">
           <legend className="px-2 font-display text-2xl text-ink">Your income</legend>
           <p className="mb-6 text-sm text-ink-2">{STEP_INTROS.income}</p>
@@ -881,7 +890,7 @@ export function Questionnaire() {
         </fieldset>
       )}
 
-      {step === 3 && (
+      {step === 4 && (
         <fieldset className="rounded-xl border border-rule bg-card p-6 sm:p-8 animate-in fade-in duration-300">
           <legend className="px-2 font-display text-2xl text-ink">Anyone applying with you?</legend>
           <p className="mb-6 text-sm text-ink-2">Adding a co-borrower can help with income and programs. If not, just move on.</p>
@@ -903,10 +912,10 @@ export function Questionnaire() {
         </fieldset>
       )}
 
-      {step === 4 && (
+      {step === 5 && (
         <fieldset className="rounded-xl border border-rule bg-card p-6 sm:p-8 animate-in fade-in duration-300">
           <legend className="px-2 font-display text-2xl text-ink">Your credit</legend>
-          <p className="mb-6 text-sm text-ink-2">A rough range is enough — we never pull your credit.</p>
+          <p className="mb-6 text-sm text-ink-2">{STEP_INTROS.credit}</p>
           <div className="flex flex-col gap-6">
             <Field id="q-knows-score" label="Do you know your credit score?" help="We never pull your credit. This is self-reported and educational.">
               <ChoiceGroup id="q-knows-score" value={knowsScore} onChange={setKnowsScore} options={[{ value: "no", label: "No, I'll pick a range" }, { value: "yes", label: "Yes, I know my score" }]} />
@@ -937,7 +946,7 @@ export function Questionnaire() {
         </fieldset>
       )}
 
-      {step === 5 && (
+      {step === 6 && (
         <fieldset className="rounded-xl border border-rule bg-card p-6 sm:p-8 animate-in fade-in duration-300">
           <legend className="px-2 font-display text-2xl text-ink">Your savings &amp; assets</legend>
           <p className="mb-6 text-sm text-ink-2">{STEP_INTROS.money}</p>
@@ -1034,7 +1043,7 @@ export function Questionnaire() {
         </fieldset>
       )}
 
-      {step === 6 && (
+      {step === 7 && (
         <fieldset className="rounded-xl border border-rule bg-card p-6 sm:p-8 animate-in fade-in duration-300">
           <legend className="px-2 font-display text-2xl text-ink">Your monthly debts</legend>
           <p className="mb-6 text-sm text-ink-2">Everything except rent — detailing the type helps, since lenders treat some debts differently.</p>

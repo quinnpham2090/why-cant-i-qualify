@@ -17,7 +17,7 @@ export default function CheckPage() {
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-ink-2 leading-relaxed">
           A few quick questions, an educational snapshot. No credit pull, no Social
-          Security number, about five minutes.
+          Security number, about five to ten minutes.
         </p>
       </header>
       <Questionnaire />

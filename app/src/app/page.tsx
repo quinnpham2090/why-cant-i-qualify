@@ -2,11 +2,12 @@ import Link from "next/link";
 import { DISCLOSURES } from "@/config/disclosures";
 import { HERO_HEADLINE, HERO_SUBHEAD } from "@/engine/labels";
 import { Testimonials } from "@/components/Testimonials";
+import { MloAvatar } from "@/components/MloAvatar";
 
 const trustBadges = [
   { label: "No credit pull" },
   { label: "No SSN required" },
-  { label: "~5 minutes" },
+  { label: "5–10 minutes" },
   { label: "Licensed MLO" },
 ];
 
@@ -32,7 +33,7 @@ const steps = [
   {
     n: "01",
     title: "Answer a few questions",
-    body: "Seven short steps on income, debt, credit range, and the home you're considering.",
+    body: "A few short steps on income, debt, credit range, and the home you're considering.",
   },
   {
     n: "02",
@@ -102,7 +103,7 @@ export default function Home() {
           <div className="mt-14 grid gap-x-10 gap-y-12 md:grid-cols-3">
             {audiences.map((a) => (
               <div key={a.n} className="border-t border-ink pt-5">
-                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-accent">
+                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-brand">
                   {a.n}
                 </p>
                 <h3 className="mt-3 text-lg font-semibold text-ink">{a.title}</h3>
@@ -126,7 +127,7 @@ export default function Home() {
           <ol className="mt-14 grid gap-x-10 gap-y-12 md:grid-cols-3">
             {steps.map((s) => (
               <li key={s.n} className="border-t border-rule pt-5">
-                <p className="font-display text-4xl text-accent">{s.n}</p>
+                <p className="font-display text-4xl text-brand">{s.n}</p>
                 <h3 className="mt-3 text-base font-semibold text-ink">{s.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-ink-2">{s.body}</p>
               </li>
@@ -141,6 +142,13 @@ export default function Home() {
           <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-paper/60">
             The person behind the check
           </p>
+          {/* Photo slot: MloAvatar renders the operator's real photo when
+              NEXT_PUBLIC_MLO_PHOTO_URL is set, monogram until then. Trust
+              review flagged "real person, not a faceless form" copy with zero
+              human imagery as its own contradiction. */}
+          <div className="mt-6 flex justify-center">
+            <MloAvatar className="h-20 w-20 text-3xl" />
+          </div>
           <h2
             id="about"
             className="mt-5 font-display text-4xl leading-tight tracking-tight sm:text-5xl"
@@ -154,12 +162,16 @@ export default function Home() {
             licensed professional reviewing your full documentation can discuss actual
             loan options with you.
           </p>
-          <Link
-            href="/book"
-            className="mt-9 inline-flex items-center justify-center rounded-lg bg-paper px-8 py-3.5 text-[0.9375rem] font-medium text-ink transition-colors hover:bg-accent hover:text-on-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          >
-            Book a free review
-          </Link>
+          <p className="mt-9 text-sm text-paper/60">
+            Prefer to talk first?{" "}
+            <Link
+              href="/book"
+              className="underline underline-offset-4 text-paper hover:text-paper/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              Book a free review
+            </Link>{" "}
+            — no obligation.
+          </p>
         </div>
       </section>
 
@@ -173,7 +185,7 @@ export default function Home() {
             See where you may stand
           </h2>
           <p className="mt-4 text-ink-2">
-            Free, confidential, and takes about five minutes. No credit pull.
+            Free, confidential, and takes about five to ten minutes. No credit pull.
           </p>
           <Link href="/check" className="btn-primary mt-10">
             Start my free readiness check
