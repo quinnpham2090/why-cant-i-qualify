@@ -2,9 +2,10 @@
 -- Why Can't I Qualify? — Supabase schema (V1)
 -- Run in: Supabase Dashboard -> SQL Editor
 -- Tables: leads, consents, diagnostic_results
--- Design: public (anon) may INSERT form submissions; cannot read
---         them back. Service role manages everything. This keeps
---         PII locked down while allowing the lead form to write.
+-- Design: anon has NO access (policies removed by migration 001 — the public
+--         anon key is discoverable by anyone). The server route writes with
+--         the service role, which bypasses RLS. This keeps PII locked down
+--         while closing the direct-to-DB spam channel.
 -- Retention: MAP Rule 12 CFR 1014.5 requires keeping advertising /
 --         consent records >= 24 months. Do not add hard-delete jobs
 --         shorter than that without attorney sign-off.
@@ -13,6 +14,9 @@
 create extension if not exists "pgcrypto";
 
 -- ---------- leads ----------
+-- NOTE: this base schema mirrors migrations 001-005 for fresh installs.
+-- Existing deployments apply the numbered migrations instead (002 capture/
+-- nurture columns, 003 scoring columns, 004 nurture timestamps, 005 audit).
 create table if not exists public.leads (
   id              uuid primary key default gen_random_uuid(),
   created_at      timestamptz not null default now(),
@@ -25,7 +29,16 @@ create table if not exists public.leads (
   state           text not null default 'FL',
   composite_tier  text,
   engine_version  text,
-  status          text not null default 'new'
+  status          text not null default 'new',
+  capture_type    text,
+  nurture_status  text not null default 'none',
+  lead_score      int,
+  lead_tier       text,
+  last_contacted_at timestamptz,
+  next_action     text,
+  last_nurture_at timestamptz,
+  unsubscribed_at timestamptz,
+  activity_log    text[] not null default '{}'
 );
 
 -- ---------- consents ----------
@@ -72,15 +85,16 @@ alter table public.consents            enable row level security;
 alter table public.diagnostic_results  enable row level security;
 alter table public.funnel_events       enable row level security;
 
--- anon (public web) can INSERT only. No SELECT/UPDATE/DELETE.
-create policy "anon_insert_leads" on public.leads
-  for insert to anon with check (true);
-create policy "anon_insert_consents" on public.consents
-  for insert to anon with check (true);
-create policy "anon_insert_results" on public.diagnostic_results
-  for insert to anon with check (true);
-create policy "anon_insert_funnel_events" on public.funnel_events
-  for insert to anon with check (true);
+-- anon INSERT policies were REMOVED by supabase/migrations/001-drop-anon-policies.sql
+-- (Stage 2 Phase 1.5): the public anon key is discoverable by anyone, and
+-- `check (true)` inserts let it bypass the app's rate limiting, field caps,
+-- consent enforcement, and Turnstile. All writes flow through the server-only
+-- service role, which bypasses RLS — the app loses nothing.
+--
+-- drop policy "anon_insert_leads" on public.leads;
+-- drop policy "anon_insert_consents" on public.consents;
+-- drop policy "anon_insert_results" on public.diagnostic_results;
+-- drop policy "anon_insert_funnel_events" on public.funnel_events;
 
 -- Indexes for the MLO dashboard / follow-up queries (service role).
 create index if not exists leads_created_at_idx on public.leads (created_at desc);

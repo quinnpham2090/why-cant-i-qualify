@@ -24,11 +24,12 @@ export type FunnelEventName =
   | "results_viewed"
   | "lead_capture_start"
   | "lead_capture_success"
+  | "soft_capture_success"
   | "book_click";
 
 interface EventPayload {
   event: FunnelEventName;
-  /** Wizard step index (0-3) for step-level drop-off. */
+  /** Wizard step index (0 to STEP_COUNT-1) for step-level drop-off. */
   step?: number;
   /** Coarse enum answers — never free text, never financial figures. */
   meta?: Record<string, string | number | boolean | null>;

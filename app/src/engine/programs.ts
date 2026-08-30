@@ -10,6 +10,7 @@ import {
   USDA_ANNUAL_GUARANTEE_PCT,
 } from "./tables";
 import {
+  LoanPurpose,
   LoanType,
   PropertyType,
   PropertyUse,
@@ -168,7 +169,17 @@ export function determineEligiblePrograms(i: EngineInputs, credit: CreditProfile
   }
 
   // ---- Section 184 (tribal members; any land status incl. trust land) -------
-  if (i.isTribalMember === true && fico >= 500 && credit.waitingClear) {
+  // Catalog B11: available to enrolled members who are citizens or permanent
+  // residents (previously ungated on residency at all).
+  if (
+    i.isTribalMember === true &&
+    fico >= 500 &&
+    credit.waitingClear &&
+    (residency == null ||
+      residency === ResidencyStatus.UNKNOWN ||
+      residency === ResidencyStatus.US_CITIZEN ||
+      residency === ResidencyStatus.PERMANENT_RESIDENT)
+  ) {
     eligible.push(LoanType.SECTION_184);
   }
 
@@ -188,9 +199,9 @@ export function determineEligiblePrograms(i: EngineInputs, credit: CreditProfile
     eligible.includes(LoanType.CONVENTIONAL_JUMBO)
   ) {
     // Surfaced as alternates; the MLO/MCU sorts which product fits the job.
-    // Kept behind explicit purpose choice to avoid noise on vanilla purchases.
-    if (i.loanPurpose === ("renovation" as never)) eligible.push(LoanType.RENOVATION);
-    if (i.loanPurpose === ("construction" as never)) eligible.push(LoanType.CONSTRUCTION_OTC);
+    // Gated on the explicit purpose choice to avoid noise on vanilla purchases.
+    if (i.loanPurpose === LoanPurpose.RENOVATION) eligible.push(LoanType.RENOVATION);
+    if (i.loanPurpose === LoanPurpose.CONSTRUCTION_OTC) eligible.push(LoanType.CONSTRUCTION_OTC);
   }
 
   // ---- Physician program (Catalog L1) ----------------------------------------
@@ -298,7 +309,12 @@ export function mortgageInsuranceAnnual(
   }
   if (program === LoanType.VA) return 0; // one-time funding fee, not annual MI
   if (program === LoanType.USDA) return loanAmount * (USDA_ANNUAL_GUARANTEE_PCT / 100);
-  if (program === LoanType.SECTION_184) return loanAmount * (0.015 / 100) * 100; // 1.5% guarantee fee annualized small
+  // Section 184 (catalog B11/HUD): the 1.5%/2.25% loan guarantee fee is a
+  // ONE-TIME charge (typically financed), not annual mortgage insurance. The
+  // previous code charged 1.5% of the loan amount every year, overstating
+  // tribal borrowers' PITI. The one-time fee is added to cash-to-close in
+  // runDiagnostic instead.
+  if (program === LoanType.SECTION_184) return 0;
   if (program === LoanType.NACA) return 0; // no PMI by design
   if (program === LoanType.PHYSICIAN) return 0; // lender-paid/no-MI structure
   return 0;
@@ -324,8 +340,11 @@ export function minDownPctFor(program: LoanType): number {
     case LoanType.VA:
     case LoanType.USDA:
     case LoanType.NACA:
-    case LoanType.SECTION_184:
       return 0;
+    case LoanType.SECTION_184:
+      // Catalog B11/HUD: 2.25% down (1.25% for loans over $50k) — previously
+      // modeled as 0%, which hid a real down-payment gap from tribal members.
+      return 2.25;
     case LoanType.PHYSICIAN:
       return 0; // 0-5% by lender; obstacle-free floor
     case LoanType.HOME_READY:

@@ -29,6 +29,7 @@ const ALLOWED_EVENTS = new Set([
   "results_viewed",
   "lead_capture_start",
   "lead_capture_success",
+  "soft_capture_success",
   "book_click",
 ]);
 

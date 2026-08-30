@@ -37,6 +37,16 @@ export const DISCLOSURES = {
     // attorney gate. NMLS IDs above are the national identifiers.
     licenseNumber: "MLD1991",
   },
+  /**
+   * Public contact points (FL §494.0026(2) requires business phone + email
+   * in advertising; both render in the footer). The phone is NOT yet
+   * operator-provided: TODO(attorney-gate) confirm the published business
+   * line before launch — until then the footer shows email only.
+   */
+  contact: {
+    email: "hello@notify.qurealtysol.com",
+    phone: null as string | null,
+  },
   nmlsConsumerAccessUrl: "https://www.nmlsconsumeraccess.org",
 } as const;
 
@@ -74,6 +84,18 @@ export const TCPA_CONSENT_TEXT =
 export const LEAD_TRANSFER_TEXT =
   `When you submit this form, your information is provided to ${DISCLOSURES.mlo.name}, a licensed mortgage loan ` +
   `originator with ${DISCLOSURES.broker.name}, who may contact you by phone, email, or text about your inquiry.`;
+
+/**
+ * Soft-capture consent ("Email my results" — Part 7 §7.2). Email-only: no
+ * phone is collected, so this is email marketing consent, not TCPA. CAN-SPAM:
+ * every send carries List-Unsubscribe + the postal address line below.
+ */
+export const SOFT_CAPTURE_CONSENT_TEXT =
+  `I agree to receive my results and occasional mortgage education emails from ` +
+  `${DISCLOSURES.broker.name}. I can unsubscribe at any time, and my information will not be sold.`;
+
+/** CAN-SPAM physical postal address line embedded in every email footer. */
+export const EMAIL_POSTAL_LINE = `${DISCLOSURES.broker.name}, ${DISCLOSURES.business.addressLine1}, ${DISCLOSURES.business.city}, ${DISCLOSURES.business.state} ${DISCLOSURES.business.zip}`;
 
 /** Educational-not-advice disclaimer. */
 export const EDUCATIONAL_ONLY_TEXT =

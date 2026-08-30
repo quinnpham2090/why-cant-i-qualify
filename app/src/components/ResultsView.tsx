@@ -2,36 +2,25 @@
 
 import { TIER_LABELS, CONFIDENCE_LABELS, RESULTS_HEADLINE, RESULTS_SUBHEAD } from "@/engine/labels";
 import { RESULT_DISCLAIMER_BLOCK } from "@/config/disclosures";
-import { LoanType, type DiagnosticResult, type EngineInputs } from "@/engine/types";
+import { LoanPurpose, LoanType, type DiagnosticResult, type EngineInputs } from "@/engine/types";
+import { isNonQm } from "@/engine/non-qm";
 import { LeadCaptureForm } from "@/components/LeadCaptureForm";
+import { SoftCaptureBanner } from "@/components/SoftCaptureBanner";
 
 const fmtUSD = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
-function RangeRow({ label, low, high, mid }: { label: string; low: number; high: number; mid?: number }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3 border-b border-sand-200 py-3 last:border-0">
-      <dt className="text-sm text-warm-700">{label}</dt>
-      <dd className="text-right">
-        <span className="font-semibold text-warm-900">
-          {fmtUSD(low)} – {fmtUSD(high)}
-        </span>
-        {mid != null && <span className="ml-2 text-xs text-warm-500">about {fmtUSD(mid)}</span>}
-      </dd>
-    </div>
-  );
-}
-
 /**
- * Warm, low-arousal tier colors (RESEARCH_EMPATHY.md §2) — no alarm red for
- * any tier. Color is never the only signal: label + icon accompany every badge.
+ * Editorial tier treatment — hairline/mono, no alarm red on any tier
+ * (RESEARCH_EMPATHY.md invariant preserved). Color is never the only signal:
+ * label + icon accompany every badge.
  */
 const TIER_BADGE: Record<string, string> = {
-  strong_fit: "bg-sage-100 text-warm-900 border border-sage-600",
-  good_fit: "bg-sage-100 text-warm-900 border border-warm-500",
-  workable: "bg-sand-100 text-warm-900 border border-sand-200",
-  some_considerations: "bg-sand-100 text-warm-900 border border-warm-500",
-  limited_fit: "bg-sand-100 text-warm-900 border border-warm-700",
+  strong_fit: "bg-accent-soft text-ink border border-accent/40",
+  good_fit: "bg-accent-soft/60 text-ink border border-accent/25",
+  workable: "bg-card text-ink border border-rule",
+  some_considerations: "bg-card text-ink border border-rule",
+  limited_fit: "bg-card text-ink border border-ink",
 };
 
 /** Supportive icon per tier — growth framing, never an X or warning triangle. */
@@ -80,7 +69,7 @@ function TierIcon({ tier, className = "h-4 w-4" }: { tier: string; className?: s
  * Distinct line icon per readiness pillar (FIX_PLAN V1.6 P14): briefcase
  * (income), scale (debt), gauge (credit), wallet (cash), house-calendar
  * (payment), home (property), document-check (documentation). 1.8px stroke,
- * warm-700, free inline SVG — no icon dependency added.
+ * ink-2, free inline SVG — no icon dependency added.
  */
 function PillarIcon({ pillar, className = "h-4.5 w-4.5" }: { pillar: string; className?: string }) {
   const paths: Record<string, React.ReactNode> = {
@@ -202,9 +191,7 @@ const AGENCY_EXTRA_LABELS: Partial<Record<LoanType, string>> = {
   [LoanType.MCC]: "With mortgage tax credit (MCC)",
   [LoanType.RENOVATION]: "Renovation loan (203k / HomeStyle)",
   [LoanType.CONSTRUCTION_OTC]: "One-time-close construction",
-}
-
-const NON_QM_SET = new Set<string>(Object.keys(NON_QM_LABELS));
+};
 
 const PROGRAM_LABELS: Partial<Record<LoanType, string>> = {
   [LoanType.CONVENTIONAL_CONF]: "Conventional",
@@ -212,15 +199,39 @@ const PROGRAM_LABELS: Partial<Record<LoanType, string>> = {
   [LoanType.FHA]: "FHA",
   [LoanType.VA]: "VA",
   [LoanType.USDA]: "USDA",
+  [LoanType.SECTION_184]: "Section 184 (tribal home loan)",
+  [LoanType.CHATTEL_MANUFACTURED]: "Home-only (chattel) manufactured loan",
+  [LoanType.PHYSICIAN]: "Medical professional program",
+  [LoanType.NACA]: "NACA program (via counseling)",
+  [LoanType.BRIDGE_HARD_MONEY]: "Bridge / asset-based loan (short-term)",
   ...NON_QM_LABELS,
   ...AGENCY_EXTRA_LABELS,
 };
 
 export function ResultsView({ result, inputs }: { result: DiagnosticResult; inputs: EngineInputs }) {
+  // Human-readable pillar names (Stage 2 Phase 2) — raw engine category keys
+  // ("income", "debt"…) read as unfinished UI; label them properly and keep
+  // color/score as secondary signals.
+  const PILLAR_LABELS: Record<string, string> = {
+    income: "Income stability",
+    debt: "Debt load",
+    credit: "Credit profile",
+    cash: "Cash & savings",
+    payment: "Payment affordability",
+    property: "Property fit",
+    documentation: "Documentation readiness",
+  };
+  const isRefi =
+    inputs.loanPurpose === LoanPurpose.REFI_RATE_TERM || inputs.loanPurpose === LoanPurpose.REFI_CASH_OUT;
   const pillarOrder = ["income", "debt", "credit", "cash", "payment", "property", "documentation"];
-  const pillClass = TIER_BADGE[result.compositeTier] ?? "bg-sand-100 text-warm-900";
-  const qmPrograms = result.eligiblePrograms.filter((p) => !NON_QM_SET.has(p));
-  const nonQmPrograms = result.eligiblePrograms.filter((p) => NON_QM_SET.has(p));
+  const pillClass = TIER_BADGE[result.compositeTier] ?? "bg-paper-2 text-ink";
+  // Stage 2 Phase 1: derive the split from the engine's own `isNonQm` so the
+  // UI grouping can never drift from the engine's taxonomy (previously the UI
+  // hardcoded Section 184 / Physician / NACA / Chattel / Bridge as "non-QM"
+  // while the engine's isNonQm() disagreed, mislabeling government and
+  // counseling-based programs under the alternative-documentation caveat).
+  const qmPrograms = result.eligiblePrograms.filter((p) => !isNonQm(p));
+  const nonQmPrograms = result.eligiblePrograms.filter((p) => isNonQm(p));
   // P7: surface the non-QM pricing note beside the numbers when an investor /
   // alternative-documentation program is in the eligible set.
   const showNonQmRateNote = nonQmPrograms.length > 0;
@@ -229,41 +240,41 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
     <section aria-labelledby="results-heading" className="space-y-8">
       {/* 1. Tier + empathetic summary */}
       <header className="text-center">
-        <h2 id="results-heading" className="text-2xl font-semibold sm:text-3xl">
+        <h2 id="results-heading" className="font-display text-4xl leading-tight tracking-tight sm:text-5xl">
           {RESULTS_HEADLINE}
         </h2>
-        <p className="mx-auto mt-2 max-w-xl text-sm text-warm-700">{RESULTS_SUBHEAD}</p>
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-          <span className={`inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-4 text-xl sm:text-2xl font-bold shadow-sm ${pillClass}`}>
-            <TierIcon tier={result.compositeTier} className="w-8 h-8 sm:w-10 sm:h-10" />
+        <p className="mx-auto mt-2 max-w-xl text-sm text-ink-2">{RESULTS_SUBHEAD}</p>
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+          <span className={`inline-flex items-center justify-center gap-2 rounded-lg px-5 py-3 text-lg sm:text-xl font-semibold ${pillClass}`}>
+            <TierIcon tier={result.compositeTier} className="w-6 h-6 sm:w-7 sm:h-7" />
             {TIER_LABELS[result.compositeTier]}
           </span>
-          <span className="rounded-full bg-sand-100 px-3 py-1.5 text-xs text-warm-700">
+          <span className="rounded-lg border border-rule bg-card px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-2">
             {CONFIDENCE_LABELS[result.confidence]}
           </span>
         </div>
-        <p className="mx-auto mt-4 max-w-xl font-warm-serif text-lg text-warm-900">
+        <p className="mx-auto mt-4 max-w-xl font-display text-xl leading-snug text-ink sm:text-2xl">
           {result.compositeTierMessage}
         </p>
       </header>
 
       {/* 2. Your next step — obstacle + concrete action first (agency before detail) */}
       {(result.primaryObstacle || result.strengths.length > 0) && (
-        <div className="rounded-2xl border border-sand-200 bg-sand-50 p-6">
-          <h3 className="text-base font-semibold text-warm-900">Where we would start</h3>
+        <div className="rounded-xl border border-rule bg-paper-2 p-6">
+          <h3 className="text-base font-semibold text-ink">Where we would start</h3>
           {result.primaryObstacle ? (
-            <div className="mt-3 rounded-xl border border-sand-200 bg-surface p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-warm-500">
+            <div className="mt-3 rounded-lg border border-rule bg-card p-4">
+              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-3">
                 The main thing to look at
               </p>
-              <p className="mt-1 text-sm text-warm-900">{result.primaryObstacle.description}</p>
-              <p className="mt-1.5 text-xs text-warm-700">
+              <p className="mt-1 text-sm text-ink">{result.primaryObstacle.description}</p>
+              <p className="mt-1.5 text-xs text-ink-2">
                 Typical timeframe to work on this: {result.primaryObstacle.fixHorizon}. A licensed
                 loan originator can walk through the specifics with you.
               </p>
             </div>
           ) : (
-            <p className="mt-3 text-sm text-warm-700">
+            <p className="mt-3 text-sm text-ink-2">
               Nothing major is standing out — the breakdown below shows where your profile is
               strongest and where a lender may look closer.
             </p>
@@ -271,7 +282,7 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
           {result.secondaryObstacles.length > 0 && (
             <ul className="mt-3 space-y-2">
               {result.secondaryObstacles.map((o) => (
-                <li key={`${o.category}-${o.description}`} className="rounded-lg bg-surface p-3 text-sm text-warm-700">
+                <li key={`${o.category}-${o.description}`} className="rounded-lg bg-card p-3 text-sm text-ink-2">
                   {o.description}
                 </li>
               ))}
@@ -282,12 +293,12 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
 
       {/* 3. Strengths — what's already working, surfaced early */}
       {result.strengths.length > 0 && (
-        <div className="rounded-2xl border border-sage-100 bg-sage-50 p-6">
-          <h3 className="text-base font-semibold text-warm-900">What is already working for you</h3>
+        <div className="rounded-xl border border-rule bg-paper-2 p-6">
+          <h3 className="text-base font-semibold text-ink">What is already working for you</h3>
           <ul className="mt-3 space-y-2">
             {result.strengths.map((s) => (
-              <li key={`${s.category}-${s.description}`} className="flex items-start gap-2 rounded-lg bg-surface p-3 text-sm text-warm-900">
-                <span className="mt-0.5 text-sage-600"><StrengthIcon className="h-4 w-4" /></span>
+              <li key={`${s.category}-${s.description}`} className="flex items-start gap-2 rounded-lg bg-card p-3 text-sm text-ink">
+                <span className="mt-0.5 text-accent"><StrengthIcon className="h-4 w-4" /></span>
                 {s.description}
               </li>
             ))}
@@ -297,12 +308,12 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
 
       {/* 4. Programs that may fit — agency + non-QM with explicit framing */}
       {result.eligiblePrograms.length > 0 && result.eligiblePrograms[0] !== LoanType.UNKNOWN && (
-        <div className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm">
-          <h3 className="text-base font-semibold text-warm-900">Programs that may fit your situation</h3>
+        <div className="rounded-xl border border-rule bg-card p-6">
+          <h3 className="text-base font-semibold text-ink">Programs that may fit your situation</h3>
           {qmPrograms.length > 0 && (
             <ul className="mt-3 flex flex-wrap gap-2">
               {qmPrograms.map((p) => (
-                <li key={p} className="rounded-full bg-sage-50 px-3 py-1.5 text-sm text-warm-900">
+                <li key={p} className="rounded-md border border-rule bg-card px-3 py-1.5 text-sm text-ink">
                   {PROGRAM_LABELS[p] ?? p.replace(/_/g, " ")}
                 </li>
               ))}
@@ -310,17 +321,17 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
           )}
           {nonQmPrograms.length > 0 && (
             <div className="mt-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-warm-500">
+              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-3">
                 Also worth exploring — alternative documentation programs
               </p>
               <ul className="mt-2 flex flex-wrap gap-2">
                 {nonQmPrograms.map((p) => (
-                  <li key={p} className="rounded-full bg-sand-100 px-3 py-1.5 text-sm text-warm-900">
-                    {NON_QM_LABELS[p as LoanType] ?? p.replace(/_/g, " ")}
+                  <li key={p} className="rounded-md border border-rule bg-card px-3 py-1.5 text-sm text-ink">
+                    {NON_QM_LABELS[p] ?? p.replace(/_/g, " ")}
                   </li>
                 ))}
               </ul>
-              <p className="mt-2 text-xs text-warm-700">
+              <p className="mt-2 text-xs text-ink-2">
                 These are offered by specialized lenders with their own guidelines — being shown
                 here is not a determination of eligibility.
               </p>
@@ -330,60 +341,149 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
       )}
 
       
-      {/* 5. Headline numbers (2x2 Dashboard Grid) */}
+      {/* 5. Headline numbers (2x2 Dashboard Grid). For a refinance the
+             purchase-shaped max-loan / price ranges would be misleading, so
+             they give way to the DTI cards (Stage 2 Phase 2). */}
       <div className="space-y-4">
-        <h3 className="text-xl font-bold text-warm-900">Your Estimated Snapshot</h3>
+        <h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-3">Your Estimated Snapshot</h3>
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm flex flex-col justify-center">
-            <h4 className="text-sm font-medium text-warm-700">Max Loan Amount</h4>
-            <div className="mt-2 text-2xl sm:text-3xl font-bold text-warm-900">
-              {fmtUSD(result.maxLoanAmount.low)} – {fmtUSD(result.maxLoanAmount.high)}
-            </div>
-            <p className="mt-1 text-xs text-warm-500">about {fmtUSD(result.maxLoanAmount.mid)}</p>
-          </div>
+          {!isRefi && (
+            <>
+              <div className="rounded-xl border border-rule bg-card p-6 flex flex-col justify-center">
+                <h4 className="text-sm font-medium text-ink-2">Max Loan Amount</h4>
+                <div className="mt-2 font-mono tnum text-2xl sm:text-3xl font-semibold text-ink">
+                  {fmtUSD(result.maxLoanAmount.low)} – {fmtUSD(result.maxLoanAmount.high)}
+                </div>
+                <p className="mt-1 text-xs text-ink-3">about {fmtUSD(result.maxLoanAmount.mid)}</p>
+              </div>
 
-          <div className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm flex flex-col justify-center">
-            <h4 className="text-sm font-medium text-warm-700">Affordable Home Price</h4>
-            <div className="mt-2 text-2xl sm:text-3xl font-bold text-warm-900">
-              {fmtUSD(result.affordablePurchasePrice.low)} – {fmtUSD(result.affordablePurchasePrice.high)}
-            </div>
-            <p className="mt-1 text-xs text-warm-500">about {fmtUSD(result.affordablePurchasePrice.mid)}</p>
-          </div>
+              <div className="rounded-xl border border-rule bg-card p-6 flex flex-col justify-center">
+                <h4 className="text-sm font-medium text-ink-2">Affordable Home Price</h4>
+                <div className="mt-2 font-mono tnum text-2xl sm:text-3xl font-semibold text-ink">
+                  {fmtUSD(result.affordablePurchasePrice.low)} – {fmtUSD(result.affordablePurchasePrice.high)}
+                </div>
+                <p className="mt-1 text-xs text-ink-3">about {fmtUSD(result.affordablePurchasePrice.mid)}</p>
+              </div>
+            </>
+          )}
 
-          <div className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm flex flex-col justify-center">
-            <h4 className="text-sm font-medium text-warm-700">Monthly Payment (PITI)</h4>
-            <div className="mt-2 text-2xl sm:text-3xl font-bold text-warm-900">
+          <div className="rounded-xl border border-rule bg-card p-6 flex flex-col justify-center">
+            <h4 className="text-sm font-medium text-ink-2">{isRefi ? "Est. Monthly Payment (PITI)" : "Monthly Payment (PITI)"}</h4>
+            <div className="mt-2 font-mono tnum text-2xl sm:text-3xl font-semibold text-ink">
               {fmtUSD(result.estimatedPiti.low)} – {fmtUSD(result.estimatedPiti.high)}
             </div>
-            <p className="mt-1 text-xs text-warm-500">about {fmtUSD(result.estimatedPiti.mid)}</p>
+            <p className="mt-1 text-xs text-ink-3">about {fmtUSD(result.estimatedPiti.mid)}</p>
           </div>
 
-          <div className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm flex flex-col justify-center">
-            <h4 className="text-sm font-medium text-warm-700">Cash to Close</h4>
-            <div className="mt-2 text-2xl sm:text-3xl font-bold text-warm-900">
+          <div className="rounded-xl border border-rule bg-card p-6 flex flex-col justify-center">
+            <h4 className="text-sm font-medium text-ink-2">Cash to Close</h4>
+            <div className="mt-2 font-mono tnum text-2xl sm:text-3xl font-semibold text-ink">
               {fmtUSD(result.cashToClose.low)} – {fmtUSD(result.cashToClose.high)}
             </div>
-            <p className="mt-1 text-xs text-warm-500">about {fmtUSD(result.cashToClose.mid)}</p>
+            <p className="mt-1 text-xs text-ink-3">about {fmtUSD(result.cashToClose.mid)}</p>
+          </div>
+
+          {/* DTI — the single most decision-relevant number for this audience,
+              previously computed but never rendered outside a collapsed pillar. */}
+          <div className="rounded-xl border border-rule bg-card p-6 flex flex-col justify-center">
+            <h4 className="text-sm font-medium text-ink-2">Total Debt-to-Income</h4>
+            <div className="mt-2 font-mono tnum text-2xl sm:text-3xl font-semibold text-ink">
+              {/* Stress-200: with a near-zero income the raw ratio is huge but
+                  meaningless (e.g. $1/mo income) — say what it means instead. */}
+              {result.dtiBackEnd > 1 ? "Exceeds income" : `${(result.dtiBackEnd * 100).toFixed(1)}%`}
+            </div>
+            <p className="mt-1 text-xs text-ink-3">
+              All monthly debts plus the estimated payment, against gross income
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-rule bg-card p-6 flex flex-col justify-center">
+            <h4 className="text-sm font-medium text-ink-2">Housing Ratio</h4>
+            <div className="mt-2 font-mono tnum text-2xl sm:text-3xl font-semibold text-ink">
+              {result.dtiFrontEnd > 1 ? "Exceeds income" : `${(result.dtiFrontEnd * 100).toFixed(1)}%`}
+            </div>
+            <p className="mt-1 text-xs text-ink-3">
+              Just the estimated payment, against gross income
+            </p>
           </div>
         </div>
-        
+
+        {/* Target price vs estimated range (Stage 2 Phase 2) */}
+        {!isRefi && inputs.targetPurchasePrice != null && inputs.targetPurchasePrice > 0 && (
+          <p className="rounded-lg border border-rule bg-paper-2 p-3 text-sm text-ink">
+            {inputs.targetPurchasePrice >= result.affordablePurchasePrice.low &&
+            inputs.targetPurchasePrice <= result.affordablePurchasePrice.high
+              ? `Your target of ${fmtUSD(inputs.targetPurchasePrice)} falls inside the estimated range.`
+              : inputs.targetPurchasePrice > result.affordablePurchasePrice.high
+                ? `Your target of ${fmtUSD(inputs.targetPurchasePrice)} is above the estimated range of ${fmtUSD(result.affordablePurchasePrice.low)}–${fmtUSD(result.affordablePurchasePrice.high)}.`
+                : `Your target of ${fmtUSD(inputs.targetPurchasePrice)} is below the estimated range of ${fmtUSD(result.affordablePurchasePrice.low)}–${fmtUSD(result.affordablePurchasePrice.high)}.`}
+          </p>
+        )}
+
+        {/* Itemized monthly cost breakdown (Stage 2 Phase 2). Point estimates
+            at the target price — the range on top spans the DTI targets. */}
+        <details className="rounded-lg border border-rule bg-card p-4">
+          <summary className="cursor-pointer text-sm font-medium text-ink">
+            What makes up the monthly payment
+          </summary>
+          <table className="mt-3 w-full text-sm" aria-label="Estimated monthly payment breakdown">
+            <tbody className="[&_td]:border-b [&_td]:border-rule [&_td]:py-2 [&_tr:last-child_td]:border-0">
+              <tr>
+                <td className="text-ink-2">Principal &amp; interest</td>
+                <td className="text-right tnum font-mono text-ink">{fmtUSD(result.pitiBreakdown.principalInterest)}</td>
+              </tr>
+              <tr>
+                <td className="text-ink-2">Property taxes (estimated)</td>
+                <td className="text-right tnum font-mono text-ink">{fmtUSD(result.pitiBreakdown.propertyTax)}</td>
+              </tr>
+              <tr>
+                <td className="text-ink-2">Homeowners insurance (estimated)</td>
+                <td className="text-right tnum font-mono text-ink">{fmtUSD(result.pitiBreakdown.insurance)}</td>
+              </tr>
+              {result.pitiBreakdown.hoa > 0 && (
+                <tr>
+                  <td className="text-ink-2">HOA dues</td>
+                  <td className="text-right tnum font-mono text-ink">{fmtUSD(result.pitiBreakdown.hoa)}</td>
+                </tr>
+              )}
+              {result.pitiBreakdown.mortgageInsurance > 0 && (
+                <tr>
+                  <td className="text-ink-2">Mortgage insurance</td>
+                  <td className="text-right tnum font-mono text-ink">{fmtUSD(result.pitiBreakdown.mortgageInsurance)}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          <p className="mt-2 text-xs text-ink-3">
+            Point estimates at the price you entered. Your actual figures depend
+            on the property, the insurer, and the lender.
+          </p>
+        </details>
+
         {showNonQmRateNote && (
-          <p className="text-xs font-medium text-warm-700 bg-sand-50 p-3 rounded-xl border border-sand-200">
+          <p className="text-xs font-medium text-ink-2 bg-paper-2 p-3 rounded-lg border border-rule">
             Investor and alternative-documentation program rates typically price
-            0.75–1.75 points above comparable conventional loans — and for the
+            0.5–1.75 points above comparable conventional loans — and for the
             investor cash-flow program, the rent the property produces, not
             your personal income, drives that program.
           </p>
         )}
-        <p className="text-xs text-warm-500 px-2">
-          Payment estimates exclude taxes and insurance where noted and may be greater.
-          Actual terms depend on your full financial picture and the lender.
+        {/* Reg Z §1026.24 companion notice (EXECUTION-PLAN §0 constraint #2).
+            The PITI figures INCLUDE estimated taxes, insurance, HOA dues, and
+            mortgage insurance — the previous footnote said they exclude them,
+            which was factually inverted for these numbers. */}
+        <p className="text-xs text-ink-3 px-2">
+          Payment estimates include principal and interest, estimated property
+          taxes, homeowners insurance, HOA dues where applicable, and mortgage
+          insurance where applicable. Your actual payment may be higher, and
+          your actual rate depends on your full financial picture and the
+          lender.
         </p>
       </div>
 
       {/* 6. Seven pillars — collapsed so detail is available without overwhelming */}
-      <details className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm">
-        <summary className="cursor-pointer text-base font-semibold text-warm-900">
+      <details className="rounded-xl border border-rule bg-card p-6">
+        <summary className="cursor-pointer text-base font-semibold text-ink">
           Readiness across seven areas (details)
         </summary>
         <ul className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -391,25 +491,25 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
             const s = result.subScores[key];
             if (!s) return null;
             return (
-              <li key={key} className="rounded-xl bg-sand-50 p-4">
+              <li key={key} className="rounded-lg bg-paper-2 p-4">
                 <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-sm font-medium capitalize text-warm-900">
-                    <span className="text-warm-700">
+                  <span className="flex items-center gap-2 text-sm font-medium text-ink">
+                    <span className="text-ink-2">
                       <PillarIcon pillar={key} />
                     </span>
-                    {key}
+                    {PILLAR_LABELS[key] ?? key}
                   </span>
-                  <span className="text-sm font-semibold text-warm-900">{s.score}/100</span>
+                  <span className="font-mono tnum text-sm font-semibold text-ink">{s.score}/100</span>
                 </div>
-                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-sand-200">
+                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-rule">
                   <div
-                    className="h-full rounded-full bg-sage-600"
+                    className="h-full rounded-full bg-accent"
                     style={{ width: `${Math.min(100, Math.max(0, s.score))}%` }}
                   />
                 </div>
-                <p className="mt-2 text-xs text-warm-700">{s.summary}</p>
+                <p className="mt-2 text-xs text-ink-2">{s.summary}</p>
                 {s.redFlags.length > 0 && (
-                  <ul className="mt-1 list-inside list-disc text-xs text-warm-700">
+                  <ul className="mt-1 list-inside list-disc text-xs text-ink-2">
                     {s.redFlags.map((f) => (
                       <li key={f}>{f}</li>
                     ))}
@@ -423,11 +523,11 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
 
       {/* 7. Assumptions disclosed (audit constraint #11) */}
       {result.assumptionsUsed.length > 0 && (
-        <details className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm">
-          <summary className="cursor-pointer text-base font-semibold text-warm-900">
+        <details className="rounded-xl border border-rule bg-card p-6">
+          <summary className="cursor-pointer text-base font-semibold text-ink">
             How we calculated this (assumptions we made)
           </summary>
-          <ul className="mt-3 list-inside list-disc space-y-1.5 text-sm text-warm-700">
+          <ul className="mt-3 list-inside list-disc space-y-1.5 text-sm text-ink-2">
             {result.assumptionsUsed.map((a) => (
               <li key={a.key}>{a.description}</li>
             ))}
@@ -438,9 +538,9 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
       {/* 8. Disclaimers — in the same viewport as the result */}
       <aside
         aria-label="Important disclosures"
-        className="rounded-2xl bg-sand-50 p-5 text-xs leading-relaxed text-warm-700"
+        className="rule-t pt-6 text-xs leading-relaxed text-ink-2"
       >
-        <h3 className="mb-2 text-sm font-semibold text-warm-900">Please read</h3>
+        <h3 className="mb-2 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-3">Please read</h3>
         <ul className="space-y-1.5">
           {[...RESULT_DISCLAIMER_BLOCK, ...result.disclaimers].map((d) => (
             <li key={d}>• {d}</li>
@@ -448,7 +548,11 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
         </ul>
       </aside>
 
-      {/* 9. Lead capture — same for every result (no gating on the outcome) */}
+      {/* 9. Soft capture — "email my results" (Stage 2 Phase 3), then the
+             full lead form. Both are shown for every tier (no gating on the
+             outcome); the server dedupes by email so a soft capture followed
+             by a hard capture upgrades the same lead. */}
+      <SoftCaptureBanner result={result} />
       <LeadCaptureForm
         context={{
           compositeTier: TIER_LABELS[result.compositeTier],

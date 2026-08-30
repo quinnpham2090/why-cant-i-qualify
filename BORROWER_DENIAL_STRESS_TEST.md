@@ -1,6 +1,6 @@
 # Borrower Denial Stress Test — 40 Scenarios
 
-> **Generated:** 2026-08-29 · **Engine:** runDiagnostic (deterministic, no I/O)
+> **Generated:** 2026-08-30 · **Engine:** runDiagnostic (deterministic, no I/O)
 > **Purpose:** Stress-test the diagnostic engine against 40 real-world "why I was denied" stories, then mine the gaps for new questions and loan solutions.
 
 ---
@@ -319,13 +319,13 @@
 
 **Inputs:** income $6200/mo (w2, w2_offer_letter), FICO 565, DTI inputs debt $1350/mo, down $0 on $310000, townhome / primary, FL, reserves $3800
 
-**Engine result:** tier `limited_fit` (39), DTI 69.6% back-end / 47.8% front-end, eligible `[naca]`, recommended `naca`, confidence `high`
+**Engine result:** tier `limited_fit` (39), DTI 69.6% back-end / 47.8% front-end, eligible `[naca]`, recommended `naca`, confidence `medium`
 
 **Primary obstacle:** [credit] The estimated credit score may be below the typical requirement for the program you selected; other programs may fit better. *(fix: 3-12 months)*
 
 **Secondary:** [debt] The estimated debt-to-income ratio appears to be above 50%.
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate
+**Assumptions disclosed:** phantom_down_payment, hazard_insurance, fico_haircut, assumed_rate, confidence_range_width
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -553,7 +553,7 @@
 
 **Inputs:** income $12500/mo (self_employed, dscr_rent), FICO 762, DTI inputs debt $3570/mo, down $82500 on $550000, multi_2_4 / investment, FL, reserves $3500, rent $3800
 
-**Engine result:** tier `workable` (67), DTI 58.2% back-end / 29.6% front-end, eligible `[dscr, non_qm_jumbo]`, recommended `dscr`, confidence `high`
+**Engine result:** tier `workable` (62), DTI 60.1% back-end / 31.5% front-end, eligible `[dscr, non_qm_jumbo]`, recommended `dscr`, confidence `high`
 
 **Primary obstacle:** [credit] The estimated credit score may be below the typical requirement for the program you selected; other programs may fit better. *(fix: 3-12 months)*
 
@@ -593,13 +593,13 @@
 
 **Inputs:** income $4800/mo (variable_hourly, cash_undocumented), FICO 602, DTI inputs debt $850/mo, down $0 on $260000, manufactured / primary, FL, reserves $0
 
-**Engine result:** tier `limited_fit` (36), DTI 76.4% back-end / 56.7% front-end, eligible `[fha, naca]`, recommended `fha`, confidence `high`
+**Engine result:** tier `limited_fit` (36), DTI 76.4% back-end / 56.7% front-end, eligible `[fha, naca]`, recommended `fha`, confidence `medium`
 
 **Primary obstacle:** [credit] The estimated credit score may be below the typical requirement for the program you selected; other programs may fit better. *(fix: 3-12 months)*
 
 **Secondary:** [debt] The estimated debt-to-income ratio appears to be above 50%. · [property] Manufactured homes must sit on owned land with a permanent foundation and typically must be a multi-section (double-wide or larger) home built after 1976 to use most standard loan programs. · [cash] You may have little or nothing left in savings after closing; lenders typically want at least one to six months of payments in reserve after the loan closes.
 
-**Assumptions disclosed:** variable_income_haircut, flood_insurance, hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** phantom_down_payment, variable_income_haircut, flood_insurance, hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, confidence_range_width
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -613,13 +613,13 @@
 
 **Inputs:** income $6500/mo (w2, unknown doc), FICO 735, DTI inputs debt $800/mo, down $0 on $390000, sfr / primary, FL, reserves $1200
 
-**Engine result:** tier `some_considerations` (50), DTI 63.2% back-end / 50.9% front-end, eligible `[conventional_conf, conventional_jumbo, fha, naca]`, recommended `fha`, confidence `high`
+**Engine result:** tier `some_considerations` (50), DTI 63.2% back-end / 50.9% front-end, eligible `[conventional_conf, conventional_jumbo, fha, naca]`, recommended `fha`, confidence `medium`
 
 **Primary obstacle:** [credit] The estimated credit score may be below the typical requirement for the program you selected; other programs may fit better. *(fix: 3-12 months)*
 
 **Secondary:** [debt] The estimated debt-to-income ratio appears to be above 50%. · [cash] Savings after closing cover less than one month of payments; building toward two to six months of reserves would strengthen the file.
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** phantom_down_payment, hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, confidence_range_width
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -693,13 +693,13 @@
 
 **Inputs:** income $5400/mo (retired_fixed, unknown doc), FICO 690, DTI inputs debt $595/mo, down $0 on $195000, manufactured / primary, FL, reserves $10000
 
-**Engine result:** tier `some_considerations` (52), DTI 56.1% back-end / 45.1% front-end, eligible `[conventional_conf, fha, naca]`, recommended `fha`, confidence `high`
+**Engine result:** tier `some_considerations` (52), DTI 56.1% back-end / 45.1% front-end, eligible `[conventional_conf, fha, naca]`, recommended `fha`, confidence `medium`
 
 **Primary obstacle:** [credit] The estimated credit score may be below the typical requirement for the program you selected; other programs may fit better. *(fix: 3-12 months)*
 
 **Secondary:** [debt] The estimated debt-to-income ratio appears to be above 50%. · [property] Manufactured homes must sit on owned land with a permanent foundation and typically must be a multi-section (double-wide or larger) home built after 1976 to use most standard loan programs.
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** phantom_down_payment, hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, confidence_range_width
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -713,7 +713,7 @@
 
 **Inputs:** income $11500/mo (self_employed, full_tax_2yr), FICO 730, DTI inputs debt $1540/mo, down $78000 on $520000, multi_2_4 / investment, FL, reserves $10000, rent $4200
 
-**Engine result:** tier `good_fit` (73), DTI 44.8% back-end / 31.4% front-end, eligible `[dscr, non_qm_jumbo]`, recommended `dscr`, confidence `high`
+**Engine result:** tier `good_fit` (73), DTI 46.1% back-end / 32.8% front-end, eligible `[dscr, non_qm_jumbo]`, recommended `dscr`, confidence `high`
 
 **Primary obstacle:** [credit] The estimated credit score may be below the typical requirement for the program you selected; other programs may fit better. *(fix: 3-12 months)*
 
@@ -789,13 +789,13 @@
 
 **Inputs:** income $5200/mo (w2, unknown doc), FICO 630, DTI inputs debt $750/mo, down $0 on $285000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `some_considerations` (51), DTI 64.1% back-end / 49.7% front-end, eligible `[fha, naca]`, recommended `fha`, confidence `high`
+**Engine result:** tier `some_considerations` (51), DTI 64.1% back-end / 49.7% front-end, eligible `[fha, naca]`, recommended `fha`, confidence `medium`
 
 **Primary obstacle:** [credit] The estimated credit score may be below the typical requirement for the program you selected; other programs may fit better. *(fix: 3-12 months)*
 
 **Secondary:** [debt] The estimated debt-to-income ratio appears to be above 50%.
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** phantom_down_payment, hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, confidence_range_width
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -906,4 +906,4 @@
 
 ---
 
-*Method: 40 scenarios run through the live deterministic engine at 2026-08-29T15:23:41.414Z. Tiers, DTI, eligible programs, obstacles, strengths, assumptions, and confidence are the engine's actual outputs. Missing-question and solution rankings are synthesized from the coverage gaps above.*
+*Method: 40 scenarios run through the live deterministic engine at 2026-08-30T04:12:49.704Z. Tiers, DTI, eligible programs, obstacles, strengths, assumptions, and confidence are the engine's actual outputs. Missing-question and solution rankings are synthesized from the coverage gaps above.*

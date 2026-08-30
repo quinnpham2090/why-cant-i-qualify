@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseServer, isSupabaseConfigured } from "@/lib/supabase";
 import { sendConsumerConfirmation, sendMloNotification, escapeHtml } from "@/lib/email";
 import { rateLimit } from "@/lib/rate-limit";
+import { computeLeadScore } from "@/lib/lead-scoring";
 import { TCPA_CONSENT_TEXT, LEAD_TRANSFER_TEXT } from "@/config/disclosures";
 
 export const runtime = "nodejs";
@@ -14,6 +15,8 @@ interface LeadPayload {
   preferredTime?: string;
   compositeTier?: string;
   engineVersion?: string;
+  /** Two-letter state code from the questionnaire (Stage 4 QA fix 3). */
+  state?: string;
   inputs?: unknown;
   result?: unknown;
   consentGiven: boolean;
@@ -29,7 +32,14 @@ const FIELD_CAPS: Record<string, number> = {
   preferredTime: 20,
   compositeTier: 40,
   engineVersion: 20,
+  state: 2,
 };
+
+/**
+ * States the tool serves (Stage 4 QA fix 3). V1 = Florida only; the UI
+ * geofences, but the server validates instead of trusting the client.
+ */
+const SUPPORTED_STATES = new Set(["FL"]);
 
 /** Whole-body cap: the diagnostic result/inputs JSON a legit client sends is a few KB. */
 const MAX_BODY_BYTES = 32_768;
@@ -83,6 +93,11 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ ok: false, error: "Invalid JSON" }, { status: 400 });
   }
+  // `null` parses cleanly but is not a payload — reject before any property
+  // access (stress test EX-junk batch found the 500 this path produced).
+  if (body == null || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json({ ok: false, error: "Invalid JSON" }, { status: 400 });
+  }
 
   // -- 1. Rate limit per IP: 5/min (FIX_PLAN V1.6 P2) ----------------------
   const ip = clientIp(request);
@@ -120,6 +135,16 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+  // State (Stage 4 QA fix 3): optional, uppercased, must be a served state.
+  // Omitted -> "FL" (V1 geofence default). A non-served state is rejected
+  // rather than silently relabeled.
+  const state = typeof body.state === "string" ? body.state.trim().toUpperCase() : "";
+  if (state && !SUPPORTED_STATES.has(state)) {
+    return NextResponse.json(
+      { ok: false, error: "We currently serve Florida only. Please check back soon." },
+      { status: 400 },
+    );
+  }
   if (!body.consentGiven) {
     return NextResponse.json({ ok: false, error: "Consent is required to submit." }, { status: 400 });
   }
@@ -138,6 +163,10 @@ export async function POST(request: Request) {
   const userAgent = request.headers.get("user-agent") ?? null;
 
   // -- 6. Persist (degrade gracefully if Supabase not configured yet) -------
+  // Part 8 §8.2 scoring: computed server-side from the client-supplied
+  // diagnostic inputs/result (defensive reads inside the module).
+  const score = computeLeadScore(body.inputs, body.result, "hard");
+
   let leadId: string | null = null;
   if (isSupabaseConfigured()) {
     const db = getSupabaseServer()!;
@@ -151,7 +180,10 @@ export async function POST(request: Request) {
         preferred_time: body.preferredTime ?? null,
         composite_tier: body.compositeTier ?? null,
         engine_version: body.engineVersion ?? null,
-        state: "FL",
+        state: state || "FL", // validated above; default FL for legacy clients
+        capture_type: "hard", // full capture: name+email+consent+diagnostic (migration 002)
+        lead_score: score.score,
+        lead_tier: score.tier,
       })
       .select("id")
       .single();
@@ -175,7 +207,8 @@ export async function POST(request: Request) {
     }
   }
 
-  // -- 7. Emails (non-blocking for the response) -----------------------------
+  // -- 7. Emails (blocking: the response reports delivery so the UI can say
+  // "check your inbox" accurately; two small sends, typically <1s) ----------
   const emailData = {
     name: safeName,
     email,
@@ -183,6 +216,15 @@ export async function POST(request: Request) {
     zip: body.zip,
     preferredTime: body.preferredTime,
     compositeTier: body.compositeTier,
+    // Part 8 §8.3 enrichment: the MLO gets the scored picture, not just the
+    // contact block. Built defensively from the raw client JSON.
+    details: {
+      score,
+      engineVersion: body.engineVersion ?? null,
+      inputs: (body.inputs ?? null) as Record<string, unknown> | null,
+      result: (body.result ?? null) as Record<string, unknown> | null,
+      consentCaptured: true,
+    },
   };
   const consumerEmail = await sendConsumerConfirmation(emailData);
   const mloEmail = await sendMloNotification(emailData, TCPA_CONSENT_TEXT);

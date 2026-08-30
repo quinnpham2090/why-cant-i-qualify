@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { TCPA_CONSENT_TEXT, LEAD_TRANSFER_TEXT } from "@/config/disclosures";
+import { TCPA_CONSENT_TEXT, LEAD_TRANSFER_TEXT, DISCLOSURES } from "@/config/disclosures";
 import { trackEvent } from "@/lib/funnel";
 
 declare global {
@@ -20,8 +20,8 @@ export interface LeadContext {
 }
 
 const inputCls =
-  "w-full rounded-lg border border-hairline bg-surface px-3 py-2.5 text-base text-text-strong focus:border-sage-600 focus:outline-none focus:ring-2 focus:ring-sage-600";
-const labelCls = "mb-1.5 block text-sm font-medium text-text-strong";
+  "w-full rounded-lg border border-rule bg-card px-3.5 py-3 text-base text-ink placeholder:text-ink-3 transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30";
+const labelCls = "mb-2 block text-sm font-medium text-ink";
 
 export function LeadCaptureForm({ context }: { context?: LeadContext }) {
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
@@ -78,6 +78,14 @@ export function LeadCaptureForm({ context }: { context?: LeadContext }) {
           turnstileToken,
           compositeTier: context?.compositeTier,
           engineVersion: context?.engineVersion,
+          // Stage 4 QA fix 3: forward the questionnaire's state so the server
+          // can validate + persist it (no more hardcoded FL).
+          state:
+            context?.inputs &&
+            typeof context.inputs === "object" &&
+            typeof (context.inputs as { state?: unknown }).state === "string"
+              ? (context.inputs as { state: string }).state
+              : undefined,
           inputs: context?.inputs,
           result: context?.result,
         }),
@@ -98,16 +106,16 @@ export function LeadCaptureForm({ context }: { context?: LeadContext }) {
 
   if (status === "success") {
     return (
-      <div className="rounded-2xl border border-sage-100 bg-sage-50 p-8 text-center">
-        <h3 className="text-xl font-semibold text-warm-900">You&rsquo;re all set</h3>
-        <p className="mx-auto mt-2 max-w-md text-sm text-warm-700">
+      <div className="rounded-xl border border-accent/30 bg-accent-soft p-8 text-center">
+        <h3 className="text-xl font-semibold text-ink">You&rsquo;re all set</h3>
+        <p className="mx-auto mt-2 max-w-md text-sm text-ink-2">
           We&rsquo;ve received your information. If you&rsquo;d like to talk it through,
           book a free review below — no obligation.
         </p>
         <a
           href="/book"
           onClick={() => trackEvent({ event: "book_click" })}
-          className="mt-5 inline-block rounded-full bg-accent px-7 py-3 font-semibold text-accent-text hover:bg-accent-hover"
+          className="btn-primary mt-5"
         >
           Book my free review
         </a>
@@ -116,11 +124,11 @@ export function LeadCaptureForm({ context }: { context?: LeadContext }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="rounded-2xl border border-hairline bg-surface p-6 shadow-sm sm:p-8" noValidate>
-      <h3 className="text-xl font-semibold text-text-strong">
+    <form onSubmit={onSubmit} className="rounded-xl border border-rule bg-card p-6 sm:p-8" noValidate>
+      <h3 className="text-xl font-semibold text-ink">
         Want a licensed pro to walk through this with you?
       </h3>
-      <p className="mt-1.5 text-sm text-text-body">
+      <p className="mt-1.5 text-sm text-ink-2">
         Leave your details and {`we'll`} connect you with a licensed loan originator for a
         free, no-obligation review.
       </p>
@@ -157,7 +165,7 @@ export function LeadCaptureForm({ context }: { context?: LeadContext }) {
       {siteKey && <div ref={turnstileRef} className="mt-4" />}
 
       {/* Consent — un-pre-checked (TCPA / MAP requirement) */}
-      <label className="mt-5 flex items-start gap-3 rounded-lg bg-surface-2 p-4 text-sm text-text-body">
+      <label className="mt-5 flex items-start gap-3 rounded-lg border border-rule bg-paper-2 p-4 text-sm text-ink-2">
         <input
           type="checkbox"
           checked={consent}
@@ -167,7 +175,12 @@ export function LeadCaptureForm({ context }: { context?: LeadContext }) {
         />
         <span>
           {TCPA_CONSENT_TEXT}
-          <span className="mt-2 block text-xs text-text-muted">{LEAD_TRANSFER_TEXT}</span>
+          <span className="mt-2 block text-xs text-ink-3">{LEAD_TRANSFER_TEXT}</span>
+          <span className="mt-2 block text-xs text-ink-3">
+            You can revoke this consent at any time: reply STOP to any text, or email{" "}
+            {DISCLOSURES.contact.email} — revocation takes effect immediately and is
+            recorded with a timestamp.
+          </span>
         </span>
       </label>
 
@@ -178,11 +191,11 @@ export function LeadCaptureForm({ context }: { context?: LeadContext }) {
       <button
         type="submit"
         disabled={!consent || status === "submitting"}
-        className="mt-5 w-full rounded-full bg-accent px-8 py-3.5 font-semibold text-accent-text transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+        className="btn-primary mt-5 w-full disabled:cursor-not-allowed disabled:opacity-50"
       >
         {status === "submitting" ? "Sending…" : "Request my free review"}
       </button>
-      <p className="mt-3 text-center text-xs text-text-muted">
+      <p className="mt-3 text-center text-xs text-ink-3">
         Consent is not a condition of purchase. You can opt out at any time.
       </p>
     </form>

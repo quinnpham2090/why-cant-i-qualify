@@ -253,6 +253,33 @@ export function nonQmAssumedRate(program: NonQmProgram, fico: number): number {
   return Math.round(rate * 1000) / 1000;
 }
 
+/**
+ * Inverse of `programToLoanType`: the non-QM program table row for a loan
+ * type, or null when the type is not one of the non-QM programs. Used by the
+ * pipeline to price non-QM selections with the program's own assumed rate
+ * (base + add-on) instead of the agency fallback rate — previously
+ * `nonQmAssumedRate` was dead code and non-QM PITI was priced as if it were
+ * an agency loan.
+ */
+export function nonQmProgramFor(loanType: LoanType): NonQmProgram | null {
+  const key = (() => {
+    switch (loanType) {
+      case LoanType.BANK_STATEMENT: return "bank_statement";
+      case LoanType.PANDL_ONLY: return "pandl_only";
+      case LoanType.DSCR: return "dscr";
+      case LoanType.ASSET_QUALIFIER: return "asset_qualifier";
+      case LoanType.ITIN: return "itin";
+      case LoanType.NON_QM_JUMBO: return "non_qm_jumbo";
+      case LoanType.NON_WARRANTABLE: return "non_warrantable";
+      case LoanType.FOREIGN_NATIONAL: return "foreign_national";
+      case LoanType.FN_DSCR: return "fn_dscr";
+      default: return null;
+    }
+  })();
+  if (key == null) return null;
+  return NON_QM_PROGRAMS[key] ?? null;
+}
+
 /** True when the loan type is one of the non-QM programs. */
 export function isNonQm(program: LoanType): boolean {
   return [

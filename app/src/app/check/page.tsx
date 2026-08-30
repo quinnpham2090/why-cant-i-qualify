@@ -9,12 +9,13 @@ export const metadata: Metadata = {
 
 export default function CheckPage() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
-      <header className="mb-8 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight">
+    <div className="mx-auto max-w-3xl px-4 py-12 sm:py-16">
+      <header className="mb-10 text-center">
+        <p className="eyebrow">Readiness check</p>
+        <h1 className="mt-4 font-display text-5xl leading-tight tracking-tight text-ink sm:text-6xl">
           Your free mortgage readiness check
         </h1>
-        <p className="mx-auto mt-3 max-w-xl text-text-body">
+        <p className="mx-auto mt-4 max-w-xl text-ink-2 leading-relaxed">
           A few quick questions, an educational snapshot. No credit pull, no Social
           Security number, about five minutes.
         </p>

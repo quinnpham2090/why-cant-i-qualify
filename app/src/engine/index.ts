@@ -13,6 +13,7 @@ import {
   CLOSING_COST_MID_PCT,
 } from "./tables";
 import {
+  LoanPurpose,
   LoanType,
   PropertyType,
   PropertyUse,
@@ -46,7 +47,7 @@ import {
 import { DTI_SUBSCORE_BANDS, FRONT_END_SUBSCORE_BANDS } from "./tables";
 import { identifyObstacles } from "./obstacles";
 import { buildDisclaimers } from "./disclaimers";
-import { determineNonQmPrograms, dscrFromRent, isNonQm } from "./non-qm";
+import { determineNonQmPrograms, dscrFromRent, isNonQm, nonQmAssumedRate, nonQmProgramFor } from "./non-qm";
 import {
   cashToCloseRange,
   maxLoanAmount,
@@ -119,6 +120,20 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
   const i = normalizeInputs(rawInputs);
   const assumptions: Assumption[] = [];
 
+  // Phantom down payment (Stage 2 Phase 1): normalizeInputs injects a 3.5%
+  // FHA-minimum default when the user gives no down payment so a range can be
+  // produced. Detect it on the RAW inputs, disclose it, and reduce confidence
+  // (spec framework §10.1 requires both disclosure and a confidence hit).
+  const phantomDownPayment =
+    rawInputs.downPaymentAvailable <= 0 && rawInputs.targetPurchasePrice != null;
+  if (phantomDownPayment) {
+    assumptions.push({
+      key: "phantom_down_payment",
+      description:
+        "You did not enter a down payment amount, so 3.5% (the FHA minimum) was assumed to produce a range. Enter your actual savings for a more accurate estimate.",
+    });
+  }
+
   // 2. Qualifying income (co-borrower income is simply added when present —
   // P13; lenders sum documented income across borrowers on a joint app)
   const combinedGross =
@@ -130,8 +145,32 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
   const totalExistingDebt = calculateTotalExistingDebt(i);
 
   // 4/7. Price + tax/insurance/HOA
-  const price = i.targetPurchasePrice ?? 300000;
-  if (i.targetPurchasePrice == null) {
+  // Refinance branch (Stage 2 Phase 2): refi users don't have a purchase
+  // price. The property value comes from their estimate and the loan amount
+  // from the payoff they name — so the payment, DTI, and pillars stay
+  // meaningful instead of being purchase-shaped noise. Ranges that only make
+  // sense for a purchase (max loan / affordable price) are still computed for
+  // the data contract but the UI hides them for refi and shows pillars +
+  // programs instead (honest-output rule from the plan).
+  const isRefi =
+    i.loanPurpose === LoanPurpose.REFI_RATE_TERM || i.loanPurpose === LoanPurpose.REFI_CASH_OUT;
+  const price = isRefi
+    ? (i.estimatedHomeValue ?? 300000)
+    : (i.targetPurchasePrice ?? 300000);
+  if (isRefi) {
+    if (i.estimatedHomeValue == null) {
+      assumptions.push({
+        key: "refi_value_assumed",
+        description:
+          "No home value was provided, so a representative value was used. Enter your estimated home value for a more accurate payment picture.",
+      });
+    }
+    assumptions.push({
+      key: "refi_mode",
+      description:
+        "Because this is a refinance, the purchase-price ranges are not shown — the payment and readiness picture below is what a refinance lender would look at.",
+    });
+  } else if (i.targetPurchasePrice == null) {
     assumptions.push({
       key: "default_price",
       description: "No target price was provided, so a representative price was used for the estimate.",
@@ -215,14 +254,38 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
     });
   }
 
+  // 13. Confidence — computed before pricing so the T17 range width (step 8)
+  // can key off it. Depends only on the inputs.
+  const { confidence, reasons } = computeConfidence(i, phantomDownPayment ? 1 : 0);
+
   // 7. Rate + MI + PITI at the target price
-  const down = Math.min(i.downPaymentAvailable, price);
-  const L = Math.max(price - down, 0);
+  const down = isRefi
+    ? Math.max(0, price - (i.currentPayoffAmount ?? price * 0.8))
+    : Math.min(i.downPaymentAvailable, price);
+  if (isRefi && i.currentPayoffAmount == null) {
+    assumptions.push({
+      key: "refi_payoff_assumed",
+      description:
+        "No loan balance was provided, so the loan amount was estimated at 80% of the home value. Enter your current loan balance for a more accurate payment picture.",
+    });
+  }
+  const L = isRefi
+    ? Math.max(0, i.currentPayoffAmount ?? price * 0.8)
+    : Math.max(price - down, 0);
   const ltvPct = price > 0 ? (L / price) * 100 : 100;
-  const rate = assumedRate(priceProgramForPiti, credit.fico, ltvPct, TERM_YEARS);
+  // Non-QM selections price with the program's own assumed rate (base +
+  // add-on, fico-adjusted) instead of the agency fallback rate — previously
+  // nonQmAssumedRate was dead code and non-QM PITI/ranges were priced as if
+  // the loan were agency-eligible (Stage 2 Phase 1).
+  const nonQmRow = isNonQm(program) ? nonQmProgramFor(program) : null;
+  const rate = nonQmRow
+    ? nonQmAssumedRate(nonQmRow, credit.fico)
+    : assumedRate(priceProgramForPiti, credit.fico, ltvPct, TERM_YEARS);
   assumptions.push({
     key: "assumed_rate",
-    description: `An illustrative interest rate of ${rate.toFixed(2)}% was assumed. Your actual rate depends on your credit profile, the property, and the lender.`,
+    description: nonQmRow
+      ? `An illustrative interest rate of ${rate.toFixed(2)}% was assumed, including the typical pricing premium for this alternative-documentation program. Your actual rate depends on your credit profile, the property, and the lender.`
+      : `An illustrative interest rate of ${rate.toFixed(2)}% was assumed. Your actual rate depends on your credit profile, the property, and the lender.`,
   });
 
   const annualMI = mortgageInsuranceAnnual(priceProgramForPiti, L, ltvPct, credit.fico);
@@ -246,19 +309,38 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
   const dtiBackEnd = (p + totalExistingDebt) / Math.max(qualifyingIncome, 1);
   const dtiFrontEnd = p / Math.max(qualifyingIncome, 1);
 
+  // Component breakdown at the target price (Stage 2 Phase 2) — the PITI
+  // range spans DTI targets, but the tax/insurance/HOA/MI pieces are point
+  // estimates, so they are disclosed as scalars.
+  const pitiBreakdown = {
+    principalInterest: roundDollars(monthlyPI(L, rate, TERM_YEARS), 1),
+    propertyTax: roundDollars(tih.annualTax / 12, 1),
+    insurance: roundDollars(tih.annualInsurance / 12, 1),
+    hoa: roundDollars(tih.monthlyHoa, 1),
+    mortgageInsurance: roundDollars(annualMI / 12, 1),
+  };
+
   const reservesMonths =
     i.liquidAssetsAfterClose != null ? reserveMonths(i.liquidAssetsAfterClose, p) : null;
 
   // Max loan range across three back-end DTI targets
-  const maxLoanLow = maxLoanAmount(qualifyingIncome, totalExistingDebt, rate, TERM_YEARS, tih.annualTax, tih.annualInsurance, tih.monthlyHoa, annualMI, 0.36);
   const maxLoanMid = maxLoanAmount(qualifyingIncome, totalExistingDebt, rate, TERM_YEARS, tih.annualTax, tih.annualInsurance, tih.monthlyHoa, annualMI, 0.43);
-  const maxLoanHigh = maxLoanAmount(qualifyingIncome, totalExistingDebt, rate, TERM_YEARS, tih.annualTax, tih.annualInsurance, tih.monthlyHoa, annualMI, 0.5);
 
   const fixedNonPI = tih.annualTax / 12 + tih.annualInsurance / 12 + tih.monthlyHoa + annualMI / 12;
+  // T17 consistency (stress-200 fix): the PITI range must describe THE USER'S
+  // scenario payment, so mid is the target-price payment `p` and low/high sit
+  // at the confidence-keyed loan spread around it — the same presentation
+  // width used for maxLoanRange. The previous construction keyed low/high to
+  // the 36%→50% DTI-affordability band while mid stayed at the target price,
+  // so any scenario paying well under (large down payment) or over (expensive
+  // target) its own DTI capacity rendered a "mid" outside its own range —
+  // e.g. "$1,300 – $2,100 / about $400" on the results card.
+  const pitiHalfSpread = (RANGE_WIDTH_BY_CONFIDENCE[confidence] ?? RANGE_WIDTH_BY_CONFIDENCE.medium)
+    .loanSpreadPct / 200;
   const estimatedPiti: Range = {
-    low: roundDollars(monthlyPI(maxLoanLow, rate, TERM_YEARS) + fixedNonPI, 25),
+    low: roundDollars(p * (1 - pitiHalfSpread), 25),
     mid: roundDollars(p, 25),
-    high: roundDollars(monthlyPI(maxLoanHigh, rate, TERM_YEARS) + fixedNonPI, 25),
+    high: roundDollars(p * (1 + pitiHalfSpread), 25),
   };
 
   // 8. Affordable price range (three DTI targets; MI excluded per spec)
@@ -266,19 +348,56 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
     i.state && i.state !== "DEFAULT"
       ? PROPERTY_TAX_EFFECTIVE_RATE_BY_STATE[i.state] ?? PROPERTY_TAX_DEFAULT_RATE
       : PROPERTY_TAX_DEFAULT_RATE;
+  const affordableMid = roundDollars(
+    maxPurchasePrice(qualifyingIncome, totalExistingDebt, down, rate, TERM_YEARS, taxRatePct, tih.annualInsurance, tih.monthlyHoa, 0, 0.43),
+    1000,
+  );
+
+  // T17 (Stage 2 Phase 1): confidence-based presentation width. The mid stays
+  // anchored at the DTI-43 target; the low/high bounds sit at half the table
+  // spread on each side of the mid, keyed by answer completeness. Previously
+  // RANGE_WIDTH_BY_CONFIDENCE was imported and re-exported but never applied,
+  // so every estimate presented the full DTI 36→50 band regardless of how
+  // much the user left blank.
+  const width = RANGE_WIDTH_BY_CONFIDENCE[confidence] ?? RANGE_WIDTH_BY_CONFIDENCE.medium;
+  const loanHalfSpread = width.loanSpreadPct / 200;
+  const priceHalfSpread = width.priceSpreadPct / 200;
+  if (confidence !== "high") {
+    assumptions.push({
+      key: "confidence_range_width",
+      description:
+        "Because some answers were missing, the estimated ranges are wider to reflect that uncertainty.",
+    });
+  }
+  const maxLoanRange: Range = {
+    low: roundDollars(maxLoanMid * (1 - loanHalfSpread), 1000),
+    mid: roundDollars(maxLoanMid, 1000),
+    high: roundDollars(maxLoanMid * (1 + loanHalfSpread), 1000),
+  };
   const affordablePurchasePrice: Range = {
-    low: roundDollars(maxPurchasePrice(qualifyingIncome, totalExistingDebt, down, rate, TERM_YEARS, taxRatePct, tih.annualInsurance, tih.monthlyHoa, 0, 0.36), 1000),
-    mid: roundDollars(maxPurchasePrice(qualifyingIncome, totalExistingDebt, down, rate, TERM_YEARS, taxRatePct, tih.annualInsurance, tih.monthlyHoa, 0, 0.43), 1000),
-    high: roundDollars(maxPurchasePrice(qualifyingIncome, totalExistingDebt, down, rate, TERM_YEARS, taxRatePct, tih.annualInsurance, tih.monthlyHoa, 0, 0.5), 1000),
+    low: roundDollars(affordableMid * (1 - priceHalfSpread), 1000),
+    mid: affordableMid,
+    high: roundDollars(affordableMid * (1 + priceHalfSpread), 1000),
   };
 
   // 9. Cash to close
   const ctcMidPct = CLOSING_COST_MID_PCT[priceProgramForPiti] ?? 4.0;
   const ctc = cashToCloseRange(price, ctcMidPct);
+  // Section 184 one-time guarantee fee (catalog B11/HUD): 1.5% of the loan
+  // amount, typically financed — included here so the cash picture is honest.
+  // (The fee was previously charged as ANNUAL mortgage insurance instead.)
+  const section184Fee = program === LoanType.SECTION_184 ? L * 0.015 : 0;
+  if (section184Fee > 0) {
+    assumptions.push({
+      key: "section_184_guarantee_fee",
+      description:
+        "The Section 184 one-time HUD loan fee (1.5% of the loan amount) was included in the estimated cash to close.",
+    });
+  }
   const cashToClose: Range = {
-    low: roundDollars(ctc.low, 500),
-    mid: roundDollars(ctc.mid, 500),
-    high: roundDollars(ctc.high, 500),
+    low: roundDollars(ctc.low + section184Fee, 500),
+    mid: roundDollars(ctc.mid + section184Fee, 500),
+    high: roundDollars(ctc.high + section184Fee, 500),
   };
 
   // 10. Sub-scores
@@ -364,9 +483,6 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
   // 12. Obstacles + strengths
   const { primary, secondary, strengths } = identifyObstacles(i, subScores, credit, effectivePrograms, reservesMonths);
 
-  // 13. Confidence
-  const { confidence, reasons } = computeConfidence(i);
-
   // 14. Recommended program
   const recommendedProgram = recommendProgram(effectivePrograms, i);
 
@@ -378,16 +494,14 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
 
   return {
     qualifyingIncome,
-    maxLoanAmount: {
-      low: roundDollars(maxLoanLow, 1000),
-      mid: roundDollars(maxLoanMid, 1000),
-      high: roundDollars(maxLoanHigh, 1000),
-    },
+    // T17: presentation width keyed by confidence around the DTI-43 mid.
+    maxLoanAmount: maxLoanRange,
     affordablePurchasePrice,
     estimatedPiti,
     cashToClose,
     dtiBackEnd,
     dtiFrontEnd,
+    pitiBreakdown,
     reservesMonths: reservesMonths != null && Number.isFinite(reservesMonths) ? reservesMonths : null,
     subScores,
     compositeScore: composite.score,
@@ -406,10 +520,16 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
   };
 }
 
-function computeConfidence(i: EngineInputs): { confidence: Confidence; reasons: string[] } {
+function computeConfidence(
+  i: EngineInputs,
+  extraMissing = 0,
+): { confidence: Confidence; reasons: string[] } {
   const reasons: string[] = [];
-  let missing = 0;
+  let missing = extraMissing;
 
+  if (extraMissing > 0) {
+    reasons.push("Down payment amount was assumed because none was provided");
+  }
   if (i.loanType === LoanType.UNKNOWN) { reasons.push("Loan type not specified"); missing++; }
   if (i.creditScoreSelfReported == null && !i.creditTierSelfReported) { reasons.push("Credit score not provided"); missing++; }
   if (!i.incomeType || i.incomeType === ("unknown" as never)) { reasons.push("Income type not specified"); missing++; }
@@ -423,6 +543,10 @@ function computeConfidence(i: EngineInputs): { confidence: Confidence; reasons: 
   if (missing <= 1) confidence = "high";
   else if (missing <= 3) confidence = "medium";
   else confidence = "low";
+
+  // A phantom down payment always caps confidence at medium: the assumed 3.5%
+  // materially shapes the cash/payment picture (spec framework §10.1).
+  if (extraMissing > 0 && confidence === "high") confidence = "medium";
 
   return { confidence, reasons };
 }

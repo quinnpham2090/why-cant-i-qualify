@@ -14,6 +14,12 @@ export enum LoanPurpose {
   PURCHASE = "purchase",
   REFI_RATE_TERM = "refinance_rate_term",
   REFI_CASH_OUT = "refinance_cash_out",
+  // Purchase-shaped financing paths that surface the renovation/construction
+  // program families (Catalog I). Previously unreachable: the eligibility
+  // gate compared `loanPurpose` against string literals that were not enum
+  // members, so RENOVATION/CONSTRUCTION_OTC programs could never surface.
+  RENOVATION = "renovation",
+  CONSTRUCTION_OTC = "construction_otc",
 }
 
 export enum PropertyUse {
@@ -202,6 +208,14 @@ export interface EngineInputs {
 
   // Strongly recommended
   estimatedHomeValue?: number | null; // refi
+  /** Outstanding balance on the existing mortgage (refi). */
+  currentPayoffAmount?: number | null; // refi
+  /**
+   * Buyer timeline in months until purchase (30/90/180/365; null = "just
+   * researching" or not stated). Feeds lead prioritization (Part 8) — never
+   * shown to the consumer as a "likelihood" of any kind.
+   */
+  timelineMonths?: number | null;
   state?: string | null; // "CA", "TX", ... V1 geofenced to FL in the UI layer
   /** Residency/immigration class — gates agency + non-QM program surfaces (Catalog §0). */
   residencyStatus?: ResidencyStatus | null;
@@ -337,6 +351,19 @@ export interface DiagnosticResult {
   dtiBackEnd: number;
   dtiFrontEnd: number;
   reservesMonths: number | null;
+  /**
+   * Estimated monthly components at the target price (Stage 2 Phase 2).
+   * Scalars, not ranges: tax/insurance/HOA are point estimates from the
+   * assumed price, so presenting fake ranges for them would overstate
+   * precision. The overall PITI range remains in `estimatedPiti`.
+   */
+  pitiBreakdown: {
+    principalInterest: number;
+    propertyTax: number;
+    insurance: number;
+    hoa: number;
+    mortgageInsurance: number;
+  };
 
   // Scores
   subScores: Record<string, SubScore>;

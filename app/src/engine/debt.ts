@@ -35,6 +35,18 @@ export function monthlyDebt(d: Debt): number {
       return d.courtOrderedAmount ?? 0;
 
     case "child_support_paid":
+      // Same FNMA B3-6-05 treatment as alimony: support terminating within 10
+      // months of closing is excluded from the ratio. (The alimony branch
+      // honored `monthsUntilTermination`; this one previously ignored it even
+      // though the UI collects the value for both support types.)
+      if ((d.monthsBehind ?? 0) >= 10) return 0; // excluded from DTI (severe credit issue)
+      if (
+        d.monthsUntilTermination != null &&
+        d.monthsUntilTermination >= 0 &&
+        d.monthsUntilTermination < 10
+      ) {
+        return 0;
+      }
       return d.courtOrderedAmount ?? 0;
 
     case "thirty_day_account":

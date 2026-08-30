@@ -38,30 +38,43 @@ const TESTIMONIALS: { quote: string; context: string }[] = [
 ];
 
 export function Testimonials() {
+  // Attorney gate (Stage 2 Phase 6 / Part 9 §9.4): testimonials are a
+  // FTC-Endorsement-Guides review surface. They stay OFF by default and
+  // render only when the operator sets NEXT_PUBLIC_TESTIMONIALS_ENABLED=true
+  // after counsel signs off on the quotes and consent records exist.
+  if (process.env.NEXT_PUBLIC_TESTIMONIALS_ENABLED !== "true") return null;
   return (
-    <section aria-labelledby="testimonials-heading" className="py-16 sm:py-20">
-      <div className="mx-auto max-w-5xl px-4">
-        <h2 id="testimonials-heading" className="text-center text-3xl font-bold tracking-tight text-warm-900">
+    <section aria-labelledby="testimonials-heading" className="rule-t">
+      <div className="mx-auto max-w-6xl px-4 py-16 sm:py-24">
+        <p className="eyebrow">In their words</p>
+        <h2
+          id="testimonials-heading"
+          className="mt-4 font-display text-4xl leading-tight tracking-tight text-ink sm:text-5xl"
+        >
           What people say about the check
         </h2>
-        <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-warm-700">
+        <p className="mt-4 max-w-2xl text-sm text-ink-2">
           Illustrative composites drawn from the situations this tool is built
           for, shown to describe the experience rather than any outcome. Your
           numbers and next steps will be your own.
         </p>
 
-        <ul className="mt-10 grid gap-5 sm:grid-cols-2">
+        <ul className="mt-14 grid gap-x-10 gap-y-12 sm:grid-cols-2">
           {TESTIMONIALS.map((t) => (
-            <li key={t.quote} className="rounded-2xl border border-sand-200 bg-surface p-6 shadow-sm">
-              <blockquote className="text-warm-900">
-                <p className="text-base leading-relaxed">&ldquo;{t.quote}&rdquo;</p>
+            <li key={t.quote} className="border-t border-rule pt-6">
+              <blockquote>
+                <p className="font-display text-2xl leading-snug text-ink">
+                  &ldquo;{t.quote}&rdquo;
+                </p>
               </blockquote>
-              <p className="mt-4 text-sm font-medium text-warm-700">{t.context}</p>
+              <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-3">
+                {t.context}
+              </p>
             </li>
           ))}
         </ul>
 
-        <p className="mx-auto mt-8 max-w-2xl text-center text-xs leading-relaxed text-warm-500">
+        <p className="mx-auto mt-14 max-w-2xl text-xs leading-relaxed text-ink-3">
           These are illustrative examples, not customer reviews, and they do not
           describe typical loan outcomes. This tool is educational and is not a
           commitment to lend; {DISCLOSURES.broker.name} arranges loans only
