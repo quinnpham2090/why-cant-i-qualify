@@ -326,7 +326,6 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
   // Max loan range across three back-end DTI targets
   const maxLoanMid = maxLoanAmount(qualifyingIncome, totalExistingDebt, rate, TERM_YEARS, tih.annualTax, tih.annualInsurance, tih.monthlyHoa, annualMI, 0.43);
 
-  const fixedNonPI = tih.annualTax / 12 + tih.annualInsurance / 12 + tih.monthlyHoa + annualMI / 12;
   // T17 consistency (stress-200 fix): the PITI range must describe THE USER'S
   // scenario payment, so mid is the target-price payment `p` and low/high sit
   // at the confidence-keyed loan spread around it — the same presentation
