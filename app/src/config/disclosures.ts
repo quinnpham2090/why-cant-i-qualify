@@ -7,7 +7,9 @@
  *  - MLO:      Quan Pham, NMLS 1019158
  *  - Broker:   E Mortgage Capital, NMLS 1416824
  *  - Address:  3750 S Susan Street, Santa Ana, CA 92704
- *  - V1 state: Florida (geofenced). FL OFR license number still REQUIRED.
+ *  - Site:     general (all states). The `launchState` record below is kept
+ *              as historical license documentation (FL MLD1991) — user-facing
+ *              surfaces use the state-neutral `stateLicensingNote` instead.
  *
  * TODO(attorney-gate): Replace FL_LICENSE_NUMBER placeholder and confirm the
  * exact licensed-capacity wording with the reviewing attorney before launch.

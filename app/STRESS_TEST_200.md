@@ -1,6 +1,6 @@
 # System Stress Test — 200 Scenarios
 
-> **Generated:** 2026-08-31T06:35:11.656Z · **Engine:** runDiagnostic (deterministic, no I/O) + computeLeadScore + POST /api/lead (mocked persistence)
+> **Generated:** 2026-08-31T06:58:39.685Z · **Engine:** runDiagnostic (deterministic, no I/O) + computeLeadScore + POST /api/lead (mocked persistence)
 > **Composition:** 66 hand-picked edge scenarios (EX-*) + 134 systematic grid walks (SYS-*)
 
 ## Summary
@@ -11,7 +11,7 @@
 - **Composite tiers:** limited_fit 75 · workable 51 · good_fit 40 · strong_fit 20 · some_considerations 14
 - **Composite score:** min 35 · p50 58 · p90 85 · max 94
 - **Back-end DTI:** p10 23% · p50 60% · p90 138% · max 357269%
-- **Engine timing:** avg 0.38ms · p95 0.67ms · max 17.56ms
+- **Engine timing:** avg 0.41ms · p95 1.16ms · max 19.19ms
 - **Empty eligiblePrograms:** 0 scenarios · **DTI back<front inversions:** 0 · **monotonic variant violations:** 0 (of 160 variant checks)
 
 ## Tier × Purpose cross-tab
@@ -43,13 +43,13 @@
 
 ## Slowest scenarios
 
-- SYS-134 — 17.56ms — grid walk 134: renovation, $2800/mo commission, FICO 520, debt $2200, down 20.0% of $350000, townhome
-- SYS-133 — 5.90ms — grid walk 133: refinance cash out, $14000/mo self employed, FICO 700, debt $2200, down 20.0% of $285000, condo warrantable
-- SYS-132 — 2.90ms — grid walk 132: refinance rate term, $4200/mo retired fixed, FICO 700, debt $3500, down 20.0% of $285000, condo warrantable
-- SYS-131 — 2.34ms — grid walk 131: purchase, $4200/mo retired fixed, FICO 740, debt $3500, down 20.0% of $220000, condo nonwarrantable
-- SYS-130 — 1.61ms — grid walk 130: construction otc, $4200/mo variable hourly, FICO 620, debt $400, down 20.0% of $550000, multi 2 4
-- SYS-129 — 1.45ms — grid walk 129: renovation, $4200/mo social security, FICO 580, debt $3500, down 10.0% of $350000, multi 2 4
-- SYS-128 — 0.98ms — grid walk 128: refinance cash out, $14000/mo self employed, FICO 620, debt $3500, down 3.5% of $350000, condo warrantable
-- SYS-127 — 0.73ms — grid walk 127: refinance rate term, $2800/mo self employed, FICO 580, debt $3500, down 0.0% of $220000, condo warrantable
-- SYS-126 — 0.68ms — grid walk 126: purchase, $5800/mo retired fixed, FICO 660, debt $0, down 20.0% of $550000, condo nonwarrantable
-- SYS-125 — 0.67ms — grid walk 125: construction otc, $14000/mo variable hourly, FICO 800, debt $1000, down 3.5% of $220000, condo nonwarrantable
+- SYS-134 — 19.19ms — grid walk 134: renovation, $2800/mo commission, FICO 520, debt $2200, down 20.0% of $350000, townhome
+- SYS-133 — 3.98ms — grid walk 133: refinance cash out, $14000/mo self employed, FICO 700, debt $2200, down 20.0% of $285000, condo warrantable
+- SYS-132 — 3.28ms — grid walk 132: refinance rate term, $4200/mo retired fixed, FICO 700, debt $3500, down 20.0% of $285000, condo warrantable
+- SYS-131 — 3.26ms — grid walk 131: purchase, $4200/mo retired fixed, FICO 740, debt $3500, down 20.0% of $220000, condo nonwarrantable
+- SYS-130 — 2.74ms — grid walk 130: construction otc, $4200/mo variable hourly, FICO 620, debt $400, down 20.0% of $550000, multi 2 4
+- SYS-129 — 1.77ms — grid walk 129: renovation, $4200/mo social security, FICO 580, debt $3500, down 10.0% of $350000, multi 2 4
+- SYS-128 — 1.51ms — grid walk 128: refinance cash out, $14000/mo self employed, FICO 620, debt $3500, down 3.5% of $350000, condo warrantable
+- SYS-127 — 1.35ms — grid walk 127: refinance rate term, $2800/mo self employed, FICO 580, debt $3500, down 0.0% of $220000, condo warrantable
+- SYS-126 — 1.20ms — grid walk 126: purchase, $5800/mo retired fixed, FICO 660, debt $0, down 20.0% of $550000, condo nonwarrantable
+- SYS-125 — 1.16ms — grid walk 125: construction otc, $14000/mo variable hourly, FICO 800, debt $1000, down 3.5% of $220000, condo nonwarrantable

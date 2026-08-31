@@ -53,7 +53,7 @@ export default function Home() {
       {/* ───────────────────────── HERO ───────────────────────── */}
       <section className="border-b border-rule">
         <div className="mx-auto max-w-6xl px-4 pb-16 pt-20 sm:pt-28">
-          <p className="eyebrow">Free mortgage readiness check · Florida</p>
+          <p className="eyebrow">Free mortgage readiness check</p>
           <h1 className="mt-6 max-w-4xl font-display text-5xl leading-[1.05] tracking-tight text-ink sm:text-7xl lg:text-8xl">
             {HERO_HEADLINE}
           </h1>

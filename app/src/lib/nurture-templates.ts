@@ -58,7 +58,7 @@ export const NURTURE_TEMPLATES: NurtureTemplate[] = [
        options that exist for your situation. The most useful next step is a
        15-minute conversation about that single area — no forms, no pressure.</p>
        <p>Over the next couple of weeks we'll send a few short guides: how DTI
-       really works, what lenders look at, and the Florida programs most
+       really works, what lenders look at, and the homebuyer programs most
        people have never heard of.</p>`,
         u,
       ),
@@ -86,22 +86,22 @@ export const NURTURE_TEMPLATES: NurtureTemplate[] = [
   {
     key: "day_5",
     day: 5,
-    subject: "Florida programs most buyers have never heard of",
+    subject: "Homebuyer programs most buyers have never heard of",
     html: (name, u) =>
       doc(
         name,
-        "Florida program guide",
-        `<p>Beyond the well-known loans, Florida has programs built for specific
+        "Program guide",
+        `<p>Beyond the well-known loans, there are programs built for specific
        situations:</p>
        <ul>
          <li><strong>NACA</strong> — no down payment, no PMI, judged on payment history rather than score.</li>
          <li><strong>Section 184</strong> — the Indian Home Loan program for enrolled tribal members.</li>
-         <li><strong>FL HFA assistance</strong> — thousands toward down payment, seasonal windows.</li>
+         <li><strong>State HFA assistance</strong> — thousands toward down payment, seasonal windows (every state has one).</li>
          <li><strong>ITIN lending</strong> — real financing paths without a Social Security number.</li>
        </ul>
        <p>Each has a process, and each fails quietly when the paperwork is
        assembled wrong. That's the gap a good originator closes.</p>
-       <p>Read the full guide: <a href="${SITE}/blog/florida-first-time-homebuyer-programs">Florida first-time homebuyer programs</a></p>`,
+       <p>Read the full guide: <a href="/blog/first-time-homebuyer-programs">First-time homebuyer programs</a></p>`,
         u,
       ),
   },
@@ -144,17 +144,17 @@ export const NURTURE_TEMPLATES: NurtureTemplate[] = [
   {
     key: "monthly",
     day: 30,
-    subject: "This month in Florida homeownership readiness",
+    subject: "This month in homeownership readiness",
     html: (name, u) =>
       doc(
         name,
         "Monthly guide",
         `<p>A quick monthly note: one idea, one program, one action — things you
-       can actually use on the path to a home in Florida.</p>
+       can actually use on the path to a home.</p>
        <p>This month's idea: separate your business and personal money if you
        earn on a 1099 basis. It makes every later step — income documentation,
        bank statements, reserves — dramatically easier.</p>
-       <p>Read the full guide: <a href="${SITE}/blog/self-employed-mortgage-florida">Self-employed in Florida</a></p>`,
+       <p>Read the full guide: <a href="/blog/self-employed-mortgage">Self-employed mortgages</a></p>`,
         u,
       ),
   },

@@ -10,7 +10,7 @@ import { marked } from "marked";
  *   title: …
  *   description: …
  *   date: 2026-01-15
- *   tags: [Florida, DTI]
+ *   tags: [DTI, Education]
  *   ---
  *
  * Everything is read at build time; the pages are statically generated.

@@ -1,11 +1,11 @@
 ---
-title: Buying a Manufactured Home in Florida: What Lenders Actually Require
+title: Buying a Manufactured Home: What Lenders Actually Require
 description: The 1976 HUD code, foundations, land ownership, and single-wides — the four facts that decide whether a manufactured home can be financed.
 date: 2026-01-20
-tags: [Florida, Manufactured homes]
+tags: [Manufactured homes, Education]
 ---
 
-Manufactured homes are a huge share of affordable housing in Florida — and the
+Manufactured homes are a huge share of affordable housing across the country — and the
 single biggest source of surprise loan declines. Not because lenders dislike
 them, but because four specific facts decide everything.
 
@@ -31,7 +31,7 @@ Two very different worlds:
   conventional, and Section 184 programs can all apply.
 - **Home only, leased land** (a "chattel" loan): the loan is against the home
   itself. Fewer lenders, shorter terms, higher rates — but it is exactly how
-  most Florida manufactured-home parks work, and chattel lending exists for
+  most manufactured-home land-lease communities work, and chattel lending exists for
   this purpose.
 
 ## 4. Single-wide or double-wide?
@@ -42,8 +42,8 @@ double-wides or larger.
 
 ## The county records step people forget
 
-In Florida, if you later attach the home to the land you must retire the title
-with the county and record it as real property. Doing this *before* applying
+If you later attach the home to land you own, you must retire the title
+with your county and record it as real property. The exact process varies by state. Doing this *before* applying
 for a loan saves weeks. Doing it after means starting over.
 
 ## Where to start

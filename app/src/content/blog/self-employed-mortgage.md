@@ -1,11 +1,11 @@
 ---
-title: Self-Employed in Florida? How Lenders Read 1099 Income
+title: Self-Employed? How Lenders Read 1099 Income
 description: Two-year history, tax write-offs, bank statement programs, and 1099-only loans — how self-employed borrowers actually get financed.
 date: 2026-02-03
-tags: [Florida, Self-employed]
+tags: [Self-employed, Income documentation]
 ---
 
-Roughly one in five Florida workers is self-employed or paid on a 1099 basis —
+Roughly one in five American workers is self-employed or paid on a 1099 basis —
 delivery drivers, cleaners, contractors, rideshare, salon chairs, small
 business owners. The mortgage system was built for W-2 paychecks, so the
 self-employed path has different rules. Here is the map.

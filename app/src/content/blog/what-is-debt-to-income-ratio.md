@@ -2,7 +2,7 @@
 title: What Is Debt-to-Income Ratio (and Why It Decides Your Mortgage)
 description: Your DTI is the number lenders care about most after income. Here is how it is calculated, what counts as debt, and how to move it in weeks — not years.
 date: 2026-01-06
-tags: [Florida, DTI, Education]
+tags: [DTI, Education]
 ---
 
 If you have ever asked "why can't I qualify?", the answer usually starts with

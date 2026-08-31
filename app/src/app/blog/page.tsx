@@ -4,9 +4,9 @@ import { LegalShell } from "@/components/LegalShell";
 import { getAllPosts } from "@/lib/blog";
 
 export const metadata: Metadata = {
-  title: "Learn — Plain-Language Mortgage Guides for Florida",
+  title: "Learn — Plain-Language Mortgage Guides",
   description:
-    "Educational guides on DTI, credit events, manufactured homes, self-employed income, and the Florida programs most people have never heard of.",
+    "Educational guides on DTI, credit events, manufactured homes, self-employed income, and the homebuyer programs most people have never heard of.",
 };
 
 /**

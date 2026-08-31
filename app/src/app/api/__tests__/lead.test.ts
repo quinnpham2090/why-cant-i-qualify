@@ -99,7 +99,7 @@ describe("POST /api/lead — happy path", () => {
   });
 });
 
-describe("POST /api/lead — state handling (Stage 4 QA fix 3)", () => {
+describe("POST /api/lead — state handling (general site)", () => {
   it("persists an explicit FL state", async () => {
     const res = await POST(jsonRequest(URL, leadBody({ state: "FL" })));
     expect(res.status).toBe(200);
@@ -112,19 +112,29 @@ describe("POST /api/lead — state handling (Stage 4 QA fix 3)", () => {
     expect(findInsertWith(h.holder.calls, "capture_type")!.state).toBe("FL");
   });
 
-  it("defaults to FL when state is omitted (legacy clients)", async () => {
+  it("accepts any two-letter state code (general site — no geofence)", async () => {
+    for (const s of ["CA", "TX", "NY", "DC"]) {
+      const res = await POST(jsonRequest(URL, leadBody({ state: s })));
+      expect(res.status).toBe(200);
+      const inserts = h.holder.calls.filter((c) => c.method === "insert" && c.args[0] && typeof c.args[0] === "object" && "capture_type" in (c.args[0] as object));
+      const last = inserts[inserts.length - 1];
+      expect((last.args[0] as Record<string, unknown>).state).toBe(s);
+    }
+  });
+
+  it("stores an empty string when state is omitted (national-average estimate)", async () => {
     const body = JSON.parse(leadBody()) as Record<string, unknown>;
     delete body.state;
     const res = await POST(jsonRequest(URL, JSON.stringify(body)));
     expect(res.status).toBe(200);
-    expect(findInsertWith(h.holder.calls, "capture_type")!.state).toBe("FL");
+    expect(findInsertWith(h.holder.calls, "capture_type")!.state).toBe("");
   });
 
-  it("rejects a non-served state with 400 instead of relabeling it", async () => {
-    const res = await POST(jsonRequest(URL, leadBody({ state: "CA" })));
+  it("rejects a malformed state value with 400", async () => {
+    const res = await POST(jsonRequest(URL, leadBody({ state: "ZZZ" })));
     expect(res.status).toBe(400);
     const j = (await res.json()) as { error?: string };
-    expect(j.error).toMatch(/florida/i);
+    expect(j.error).toMatch(/state/i);
   });
 
   it("rejects an over-long state string via the field cap", async () => {

@@ -530,7 +530,9 @@ describe("System stress test — 200 scenarios", () => {
       ["junk-missing-consent", JSON.stringify({ name: "A", email: "a@b.com", zip: "33101", inputs: {}, result: {} }), 400],
       ["junk-bad-email", JSON.stringify({ name: "A", email: "bad", consentGiven: true, inputs: {}, result: {} }), 400],
       ["junk-bad-zip", JSON.stringify({ name: "A", email: "a@b.com", zip: "ABC", consentGiven: true, inputs: {}, result: {} }), 400],
-      ["junk-bad-state", JSON.stringify({ name: "A", email: "a@b.com", zip: "33101", state: "CA", consentGiven: true, inputs: {}, result: {} }), 400],
+      // General site: any 2-letter state is accepted; only malformed values
+      // (3+ chars, e.g. "ZZZ") are rejected.
+      ["junk-bad-state", JSON.stringify({ name: "A", email: "a@b.com", zip: "33101", state: "ZZZ", consentGiven: true, inputs: {}, result: {} }), 400],
       ["junk-long-name", JSON.stringify({ name: "x".repeat(150), email: "a@b.com", zip: "33101", consentGiven: true, inputs: {}, result: {} }), 400],
       ["junk-long-phone", JSON.stringify({ name: "A", email: "a@b.com", phone: "9".repeat(40), zip: "33101", consentGiven: true, inputs: {}, result: {} }), 400],
       ["junk-oversize", JSON.stringify({ name: "A", email: "a@b.com", zip: "33101", consentGiven: true, inputs: { blob: "y".repeat(40_000) }, result: {} }), 413],

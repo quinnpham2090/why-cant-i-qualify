@@ -36,10 +36,10 @@ const FIELD_CAPS: Record<string, number> = {
 };
 
 /**
- * States the tool serves (Stage 4 QA fix 3). V1 = Florida only; the UI
- * geofences, but the server validates instead of trusting the client.
+ * State validation (general site): the state is optional analytics metadata —
+ * any 2-letter US state/DC code is accepted, an omitted state is fine.
  */
-const SUPPORTED_STATES = new Set(["FL"]);
+const STATE_RE = /^[A-Z]{2}$/;
 
 /** Whole-body cap: the diagnostic result/inputs JSON a legit client sends is a few KB. */
 const MAX_BODY_BYTES = 32_768;
@@ -135,13 +135,13 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  // State (Stage 4 QA fix 3): optional, uppercased, must be a served state.
-  // Omitted -> "FL" (V1 geofence default). A non-served state is rejected
-  // rather than silently relabeled.
+  // State (general site): optional, uppercased. Any 2-letter US state/DC
+  // code is accepted for analytics context; an omitted state is fine (the
+  // estimate uses national averages). Only malformed values are rejected.
   const state = typeof body.state === "string" ? body.state.trim().toUpperCase() : "";
-  if (state && !SUPPORTED_STATES.has(state)) {
+  if (state && !STATE_RE.test(state)) {
     return NextResponse.json(
-      { ok: false, error: "We currently serve Florida only. Please check back soon." },
+      { ok: false, error: "Please enter a valid two-letter state code, or leave it blank." },
       { status: 400 },
     );
   }
@@ -180,7 +180,7 @@ export async function POST(request: Request) {
         preferred_time: body.preferredTime ?? null,
         composite_tier: body.compositeTier ?? null,
         engine_version: body.engineVersion ?? null,
-        state: state || "FL", // validated above; default FL for legacy clients
+        state: state || "", // optional analytics metadata; "" = not provided (general site)
         capture_type: "hard", // full capture: name+email+consent+diagnostic (migration 002)
         lead_score: score.score,
         lead_tier: score.tier,

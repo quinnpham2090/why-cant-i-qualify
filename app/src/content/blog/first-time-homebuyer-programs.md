@@ -1,11 +1,11 @@
 ---
-title: Florida First-Time Homebuyer Help: The Programs Most People Have Never Heard Of
-description: NACA, Section 184, FL HFA assistance, physician loans, and ITIN-friendly programs — what exists in Florida and who each one fits.
+title: First-Time Homebuyer Help: The Programs Most People Have Never Heard Of
+description: NACA, Section 184, state HFA down payment assistance, physician loans, and ITIN-friendly programs — what exists and who each one fits.
 date: 2026-01-13
-tags: [Florida, Programs, First-time buyer]
+tags: [Programs, First-time buyer, Down payment]
 ---
 
-Florida has more entry points to homeownership than the big-name loans most
+There are more entry points to homeownership than the big-name loans most
 people know about. If a conventional loan with 5% down does not fit, one of
 these may.
 
@@ -25,33 +25,34 @@ calls it that because it guarantees the loan for participating lenders. For
 enrolled members of federally recognized tribes (or Alaska natives) buying in
 an approved area, Section 184 offers a low down payment (about 2.25% of the
 loan amount for larger loans) with flexible underwriting. It works for homes
-on and off trust land in approved parts of Florida. If you are an enrolled
+on and off trust land in approved parts of the country. If you are an enrolled
 tribal member, this program exists specifically for you and most lenders
 simply do not offer it.
 
-## FL HFA down payment assistance
+## State HFA down payment assistance
 
-Florida Housing Finance Corporation runs periodic programs (FL Assist, FL
-HFA Preferred) that pair a first mortgage with thousands of dollars toward
-down payment and closing costs, often forgivable over time. Income and
-purchase-price limits apply and funds are seasonal — they open and run out.
-The honest downside: these programs usually require a mid-range credit score
-and a longer closing timeline.
+Every state has a housing finance agency (HFA), and most run programs that
+pair a first mortgage with thousands of dollars toward down payment and
+closing costs, often forgivable over time. Income and purchase-price limits
+apply and funds are seasonal — they open and run out. The honest downside:
+these programs usually require a mid-range credit score and a longer closing
+timeline. Your state HFA's website lists its current programs, or ask a local
+loan originator which ones are live right now.
 
 ## Physician and professional loans
 
 Some lenders offer doctor-focused mortgages with low or no down payment and
 relaxed DTI treatment for residents and new attendants, counting a signed
-employment contract toward income. If you are starting a medical career in
-Florida with student loans, ask specifically about physician mortgage
-programs before assuming you need 10% down.
+employment contract toward income. If you are starting a medical career with
+student loans, ask specifically about physician mortgage programs before
+assuming you need 10% down.
 
 ## ITIN borrowing is real
 
 You do not need a Social Security number to buy a home. Several lenders offer
 ITIN loans with 10–20% down and alternative credit documentation (rent,
 utilities, phone). Rates run higher than conventional loans, but for
-families building life in Florida without an SSN, this is a genuine path.
+families building life in the U.S. without an SSN, this is a genuine path.
 
 ## The catch nobody mentions
 
