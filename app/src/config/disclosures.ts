@@ -38,6 +38,13 @@ export const DISCLOSURES = {
     licenseNumber: "MLD1991",
   },
   /**
+   * Multi-state note (the site is now general, not Florida-geofenced):
+   * state-licensing language is neutral — originator licensing varies by
+   * state and is verified through NMLS Consumer Access.
+   */
+  stateLicensingNote:
+    "Licensing varies by state — verify NMLS status via NMLS Consumer Access and confirm your originator is licensed in your state.",
+  /**
    * Public contact points (FL §494.0026(2) requires business phone + email
    * in advertising; both render in the footer). The phone is NOT yet
    * operator-provided: TODO(attorney-gate) confirm the published business
@@ -55,7 +62,7 @@ export const FOOTER_DISCLOSURE_LINES: string[] = [
   `${DISCLOSURES.broker.name} — ${DISCLOSURES.broker.licensedCapacity}`,
   `NMLS #${DISCLOSURES.broker.nmlsId}`,
   `Loan Originator: ${DISCLOSURES.mlo.name}, NMLS #${DISCLOSURES.mlo.nmlsId}`,
-  `Licensed in the State of Florida — ${DISCLOSURES.launchState.regulator}, License #${DISCLOSURES.launchState.licenseNumber}.`,
+  DISCLOSURES.stateLicensingNote,
   `${DISCLOSURES.business.addressLine1}, ${DISCLOSURES.business.city}, ${DISCLOSURES.business.state} ${DISCLOSURES.business.zip}`,
   "Equal Housing Lender.",
   "This is an educational tool, not a commitment to lend. All loans subject to credit approval and underwriter review.",

@@ -26,6 +26,7 @@ import {
   type EngineInputs,
   type Range,
   type SubScore,
+  type TargetPriceAssessment,
 } from "./types";
 import { calculateQualifyingIncome } from "./income";
 import { calculateTotalExistingDebt } from "./debt";
@@ -63,6 +64,10 @@ import {
 export const ENGINE_VERSION = "1.0.0";
 
 const TERM_YEARS = 30;
+
+/** Compact price formatter for engine messages ("$440,000"). */
+const fmtPrice = (n: number | null | undefined): string =>
+  n != null && Number.isFinite(n) ? `$${Math.round(n).toLocaleString("en-US")}` : "your";
 
 function normalizeInputs(i: EngineInputs): EngineInputs {
   const n = { ...i };
@@ -457,6 +462,33 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
     high: roundDollars(affordableMid * (1 + priceHalfSpread), 1000),
   };
 
+  // 8b. Target-price assessment (stress-500 P2 follow-up): the payment math
+  // already runs at the borrower's stated target price, so dtiBackEnd IS the
+  // DTI at their number. This assessment keeps the results anchored to it —
+  // with the concrete levers that change it — instead of quietly substituting
+  // a smaller "affordable" price. Bands: ≤45% fits (typical program caps),
+  // 45–50% tight (possible with compensating factors), 50–57% stretched
+  // (specialized paths only), >57% no typical fit (honest no, with levers).
+  let targetPriceAssessment: TargetPriceAssessment | undefined;
+  if (!isRefi && i.targetPurchasePrice != null && i.targetPurchasePrice > 0) {
+    const dtiAtTarget = dtiBackEnd;
+    const pitiAtTarget = estimatedPiti.mid;
+    const priceAt45 = Math.max(
+      down,
+      maxPurchasePrice(qualifyingIncome, totalExistingDebt, down, rate, TERM_YEARS, taxRatePct, tih.annualInsurance, tih.monthlyHoa, 0, 0.45),
+    );
+    const status: TargetPriceAssessment["status"] =
+      dtiAtTarget <= 0.45 ? "fits" : dtiAtTarget <= 0.5 ? "tight" : dtiAtTarget <= 0.57 ? "stretched" : "no_typical_fit";
+    const totalAtTarget = pitiAtTarget + totalExistingDebt;
+    const monthlyIncomeGap =
+      dtiAtTarget > 0.45 && qualifyingIncome > 0
+        ? roundDollars(totalAtTarget / 0.45 - qualifyingIncome, 25)
+        : null;
+    const extraDownPaymentNeeded =
+      i.targetPurchasePrice > priceAt45 ? roundDollars(i.targetPurchasePrice - priceAt45, 500) : null;
+    targetPriceAssessment = { status, dtiAtTarget, pitiAtTarget, priceAt45Dti: roundDollars(priceAt45, 1000), monthlyIncomeGap, extraDownPaymentNeeded };
+  }
+
   // 9. Cash to close
   const ctcMidPct = CLOSING_COST_MID_PCT[priceProgramForPiti] ?? 4.0;
   const ctc = cashToCloseRange(price, ctcMidPct);
@@ -614,8 +646,9 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
     gated = {
       score: Math.min(composite.score, 39),
       tier: CompositeTier.LIMITED_FIT,
-      message:
-        "The combined monthly obligations you shared are far above what lenders typically qualify. The breakdown below shows which debts move the number most — and a co-borrower, debt paydown, or a lower target price each change it.",
+      message: targetPriceAssessment
+        ? `At your ${fmtPrice(i.targetPurchasePrice)} target price, the estimated payment alone is about ${Math.round(targetPriceAssessment.dtiAtTarget * 100)}% of the income you shared — far above the ~45% most programs accept. That's a "not as things stand," not a final no: the "Your target price" section below shows exactly what changes it (income, down payment, price, or monthly debts).`
+        : "The combined monthly obligations you shared are far above what lenders typically qualify. The breakdown below shows which debts move the number most — and a co-borrower, debt paydown, or a lower target price each change it.",
     };
   } else if (qualifyingIncome <= 0 && nonQm.length === 0) {
     gated = {
@@ -718,6 +751,7 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
     primaryObstacle: primary,
     secondaryObstacles: secondary,
     strengths,
+    targetPriceAssessment,
     eligiblePrograms: effectivePrograms,
     recommendedProgram,
     confidence,

@@ -59,9 +59,7 @@ export default function TermsPage() {
       <p>
         {DISCLOSURES.broker.name} — {DISCLOSURES.broker.licensedCapacity}, NMLS #
         {DISCLOSURES.broker.nmlsId}. Loan Originator: {DISCLOSURES.mlo.name}, NMLS #
-        {DISCLOSURES.mlo.nmlsId}. Licensed in Florida (
-        {DISCLOSURES.launchState.regulator}, License #{DISCLOSURES.launchState.licenseNumber}
-        ). Questions:{" "}
+        {DISCLOSURES.mlo.nmlsId}. {DISCLOSURES.stateLicensingNote} Questions:{" "}
         <a href={`mailto:${DISCLOSURES.contact.email}`} className="underline text-accent">
           {DISCLOSURES.contact.email}
         </a>

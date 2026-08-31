@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     template: "%s | Why Can't I Qualify?",
   },
   description:
-    "A free, no-credit-pull mortgage readiness check. Answer a few questions and get an educational snapshot of where you may stand — no Social Security number, no hard inquiry. Florida.",
+    "A free, no-credit-pull mortgage readiness check. Answer a few questions and get an educational snapshot of where you may stand — no Social Security number, no hard inquiry.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

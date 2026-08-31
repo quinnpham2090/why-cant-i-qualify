@@ -18,7 +18,7 @@ export function Header() {
         >
           Why Can&rsquo;t I Qualify?
           <span className="ml-2 align-middle font-mono text-[10px] uppercase tracking-[0.18em] text-ink-3">
-            Florida
+            All 50 states
           </span>
         </Link>
 

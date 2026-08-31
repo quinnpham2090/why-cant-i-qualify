@@ -216,7 +216,7 @@ export interface EngineInputs {
    * shown to the consumer as a "likelihood" of any kind.
    */
   timelineMonths?: number | null;
-  state?: string | null; // "CA", "TX", ... V1 geofenced to FL in the UI layer
+  state?: string | null; // "CA", "TX", ... (general site; unset → national averages)
   /** Residency/immigration class — gates agency + non-QM program surfaces (Catalog §0). */
   residencyStatus?: ResidencyStatus | null;
   /** Enrolled member of a federally recognized tribe (Section 184 / NADL). */
@@ -367,8 +367,29 @@ export interface Assumption {
   description: string;
 }
 
-export interface DiagnosticResult {
-  // Numbers
+/**
+ * Assessment of the borrower's stated target purchase price against typical
+ * program debt-ratio caps. Status bands (honest, program-aware):
+ *   fits          — back-end DTI ≤ 45%: inside what most programs accept
+ *   tight         — 45–50%: possible with strong compensating factors
+ *   stretched     — 50–57%: above typical caps; specialized/manual paths only
+ *   no_typical_fit— > 57%: no typical program reaches this payment as-is
+ */
+export interface TargetPriceAssessment {
+  status: "fits" | "tight" | "stretched" | "no_typical_fit";
+  /** Back-end DTI at the target price (same math as `dtiBackEnd`). */
+  dtiAtTarget: number;
+  /** Estimated total monthly PITI (mid) at the target price. */
+  pitiAtTarget: number;
+  /** Purchase price that fits a 45% back-end DTI with the same down payment. */
+  priceAt45Dti: number;
+  /** Extra gross monthly income that would bring the target to 45% DTI. */
+  monthlyIncomeGap: number | null;
+  /** Extra down payment that would bring the target to ~45% DTI. */
+  extraDownPaymentNeeded: number | null;
+}
+
+export interface DiagnosticResult {  // Numbers
   qualifyingIncome: number;
   maxLoanAmount: Range;
   affordablePurchasePrice: Range;
@@ -401,6 +422,16 @@ export interface DiagnosticResult {
   primaryObstacle: Obstacle | null;
   secondaryObstacles: Obstacle[];
   strengths: Strength[];
+
+  /**
+   * Stress-500 P2 follow-up: how the borrower's STATED target price fits
+   * standard program debt-ratio caps. The engine always prices the payment
+   * at the borrower's target — this assessment answers "does my number
+   * work, and what changes it?" instead of quietly substituting a smaller
+   * affordability number. Program substitution (e.g. DSCR for investors)
+   * is handled by the recommendation path, not by repricing the home.
+   */
+  targetPriceAssessment?: TargetPriceAssessment;
 
   // Program recommendations
   eligiblePrograms: LoanType[];

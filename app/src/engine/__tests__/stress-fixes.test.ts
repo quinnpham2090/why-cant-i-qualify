@@ -326,6 +326,72 @@ describe("P3/P5 — new inputs flow through", () => {
   });
 });
 
+describe("general site — state is optional with national averages", () => {
+  it("runs with no state and discloses the national-average assumption", () => {
+    const r = runDiagnostic(base({ state: undefined }));
+    expect(r.assumptionsUsed.some((a) => a.key === "tax_rate_default")).toBe(true);
+    expect(r.estimatedPiti.mid).toBeGreaterThan(0);
+  });
+
+  it("a chosen state sharpens the payment without changing eligibility logic", () => {
+    const tx = runDiagnostic(base({ state: "TX" }));
+    const fl = runDiagnostic(base({ state: "FL" }));
+    expect(tx.estimatedPiti.mid).not.toBe(fl.estimatedPiti.mid);
+  });
+});
+
+describe("target-price assessment — stay anchored to the borrower's number", () => {
+  it("a strong-income borrower at $440k with 20% down FITS at their own price", () => {
+    const r = runDiagnostic(
+      base({
+        grossMonthlyIncome: 12000,
+        creditScoreSelfReported: 760 + 20,
+        downPaymentAvailable: 88000,
+        targetPurchasePrice: 440000,
+      }),
+    );
+    expect(r.targetPriceAssessment?.status).toBe("fits");
+    expect(r.targetPriceAssessment?.dtiAtTarget).toBeLessThanOrEqual(0.45);
+    expect(r.targetPriceAssessment?.pitiAtTarget).toBeGreaterThan(0);
+  });
+
+  it("a $440k target with modest income is honestly 'no typical fit' — with levers, not a smaller price", () => {
+    const r = runDiagnostic(
+      base({
+        grossMonthlyIncome: 5000,
+        creditScoreSelfReported: 760 + 20,
+        totalMonthlyDebtPayments: 500,
+        downPaymentAvailable: 88000,
+        targetPurchasePrice: 440000,
+      }),
+    );
+    const a = r.targetPriceAssessment;
+    expect(a?.status).toBe("no_typical_fit");
+    expect(a?.priceAt45Dti).toBeLessThan(440000);
+    expect(a?.priceAt45Dti).toBeGreaterThan(200000); // sanity: not a 90% haircut
+    expect(a?.monthlyIncomeGap).toBeGreaterThan(0);
+    expect(a?.extraDownPaymentNeeded).toBeGreaterThan(0);
+    // The affordable range is context, not the verdict: it must not gate the
+    // tier on its own for this file (DTI 63% is under the 65% hard gate).
+    expect(a?.dtiAtTarget).toBeLessThan(0.65);
+  });
+
+  it("the hard DTI gate names the borrower's target price when one was set", () => {
+    const r = runDiagnostic(
+      base({
+        grossMonthlyIncome: 4500,
+        creditScoreSelfReported: 760 + 20,
+        totalMonthlyDebtPayments: 500,
+        downPaymentAvailable: 88000,
+        targetPurchasePrice: 440000,
+      }),
+    );
+    expect(r.compositeTier).toBe(CompositeTier.LIMITED_FIT);
+    expect(r.compositeTierMessage).toMatch(/440,000|target price/i);
+    expect(r.targetPriceAssessment?.status).toBe("no_typical_fit");
+  });
+});
+
 describe("validation — new rules", () => {
   it("income is NOT required on the no-traditional-income path", () => {
     const s = defaultQuestionnaireState({ hasTraditionalIncome: "no", altIncomePath: "asset_depletion", totalAssets: "800000" });

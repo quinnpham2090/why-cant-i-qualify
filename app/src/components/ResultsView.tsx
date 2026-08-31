@@ -2,7 +2,7 @@
 
 import { TIER_LABELS, CONFIDENCE_LABELS, RESULTS_HEADLINE, RESULTS_SUBHEAD } from "@/engine/labels";
 import { RESULT_DISCLAIMER_BLOCK } from "@/config/disclosures";
-import { LoanPurpose, LoanType, type DiagnosticResult, type EngineInputs } from "@/engine/types";
+import { LoanPurpose, LoanType, PropertyUse, type DiagnosticResult, type EngineInputs, type TargetPriceAssessment } from "@/engine/types";
 import { isNonQm } from "@/engine/non-qm";
 import { LeadCaptureForm } from "@/components/LeadCaptureForm";
 import { SoftCaptureBanner } from "@/components/SoftCaptureBanner";
@@ -62,6 +62,98 @@ function TierIcon({ tier, className = "h-4 w-4" }: { tier: string; className?: s
     >
       {paths[tier] ?? paths.some_considerations}
     </svg>
+  );
+}
+
+/**
+ * Stress-500 P2 follow-up: anchor the results to the borrower's OWN target
+ * price. The payment math already runs at their number — this card says
+ * whether it works inside typical program debt-ratio caps, and if not, which
+ * concrete levers change that (income, down payment, price, monthly debts).
+ * Editorial tone preserved: no alarm red, no verdict language.
+ */
+const TARGET_STATUS: Record<
+  TargetPriceAssessment["status"],
+  { label: string; body: string; ring: string }
+> = {
+  fits: {
+    label: "Works at typical program limits",
+    body: "The estimated payment at your target price sits inside the ~45% of gross income most programs accept.",
+    ring: "border-l-4 border-l-accent",
+  },
+  tight: {
+    label: "Tight, but genuinely possible",
+    body: "Several standard programs accept up to about 50% with strong compensating factors (reserves, credit, stable income). Automated underwriting decides this — a licensed originator can run your file through it.",
+    ring: "border-l-4 border-l-brand",
+  },
+  stretched: {
+    label: "Above typical program caps",
+    body: "Most standard programs stop near 45–50% of gross income. A few paths can still reach this payment — strong compensating factors with manual underwrite, or for an investment property a rent-based (DSCR) loan that qualifies on the property's rent instead of your income. Worth a direct conversation with a licensed originator.",
+    ring: "border-l-4 border-l-ink-3",
+  },
+  no_typical_fit: {
+    label: "No typical program reaches this payment as things stand",
+    body: "At the income shared, this is a \"not as things stand\" — not a final no. The levers below each move the payment directly, and any one of them can put this price back in reach.",
+    ring: "border-l-4 border-l-ink",
+  },
+};
+
+function TargetPriceCard({
+  target,
+  assessment,
+  isInvestment,
+  dscrEligible,
+}: {
+  target: number;
+  assessment: TargetPriceAssessment;
+  isInvestment: boolean;
+  dscrEligible: boolean;
+}) {
+  const s = TARGET_STATUS[assessment.status];
+  const dtiPct = assessment.dtiAtTarget > 1 ? null : Math.round(assessment.dtiAtTarget * 100);
+  const levers: string[] = [];
+  if (assessment.monthlyIncomeGap != null && assessment.monthlyIncomeGap > 0) {
+    levers.push(`about ${fmtUSD(assessment.monthlyIncomeGap)} more gross monthly income (or the same amount less in monthly debts — a co-borrower's income counts here)`);
+  }
+  if (assessment.extraDownPaymentNeeded != null && assessment.extraDownPaymentNeeded > 0) {
+    levers.push(`roughly ${fmtUSD(assessment.extraDownPaymentNeeded)} more down payment`);
+  }
+  if (assessment.priceAt45Dti > 0 && assessment.status !== "fits") {
+    levers.push(`a target near ${fmtUSD(assessment.priceAt45Dti)}`);
+  }
+  return (
+    <div className={`rounded-xl border border-rule bg-card p-6 ${s.ring}`}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h4 className="font-display text-xl font-semibold text-ink">
+          Your target price: {fmtUSD(target)}
+        </h4>
+        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3">{s.label}</span>
+      </div>
+      <p className="mt-2 text-sm text-ink">
+        {dtiPct != null ? (
+          <>
+            Estimated payment about <span className="font-mono tnum font-semibold">{fmtUSD(assessment.pitiAtTarget)}/mo</span> — roughly{" "}
+            <span className="font-mono tnum font-semibold">{dtiPct}%</span> of the gross income you shared.
+          </>
+        ) : (
+          <>
+            Estimated payment about <span className="font-mono tnum font-semibold">{fmtUSD(assessment.pitiAtTarget)}/mo</span> against the income you shared.
+          </>
+        )}{" "}
+        {s.body}
+      </p>
+      {isInvestment && dscrEligible && (
+        <p className="mt-2 text-sm text-ink-2">
+          As a rental, a rent-based (DSCR) loan can qualify on the property&apos;s rent instead of your personal income — see the program section below.
+        </p>
+      )}
+      {levers.length > 0 && (
+        <div className="mt-3 rounded-lg bg-paper-2 p-3 text-sm text-ink">
+          <span className="font-medium">What changes it: </span>
+          {levers.join("; ")}.
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -409,9 +501,20 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
       )}
       {/* 5. Headline numbers (2x2 Dashboard Grid). For a refinance the
              purchase-shaped max-loan / price ranges would be misleading, so
-             they give way to the DTI cards (Stage 2 Phase 2). */}
+             they give way to the DTI cards (Stage 2 Phase 2). The borrower's
+             own target price leads the section (stress-500 P2 follow-up):
+             the assessment answers "does MY number work, and what changes
+             it?" instead of leading with a smaller affordability number. */}
       <div className="space-y-4">
         <h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-3">Your Estimated Snapshot</h3>
+        {!isRefi && result.targetPriceAssessment && inputs.targetPurchasePrice != null && inputs.targetPurchasePrice > 0 && (
+          <TargetPriceCard
+            target={inputs.targetPurchasePrice}
+            assessment={result.targetPriceAssessment}
+            isInvestment={inputs.propertyUse === PropertyUse.INVESTMENT}
+            dscrEligible={result.eligiblePrograms.includes(LoanType.DSCR)}
+          />
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           {!isRefi && (
             <>
@@ -424,11 +527,13 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
               </div>
 
               <div className="rounded-xl border border-rule bg-card p-6 flex flex-col justify-center">
-                <h4 className="text-sm font-medium text-ink-2">Affordable Home Price</h4>
+                <h4 className="text-sm font-medium text-ink-2">Price range standard DTI math supports</h4>
                 <div className="mt-2 font-mono tnum text-2xl sm:text-3xl font-semibold text-ink">
                   {fmtUSD(result.affordablePurchasePrice.low)} – {fmtUSD(result.affordablePurchasePrice.high)}
                 </div>
-                <p className="mt-1 text-xs text-ink-3">about {fmtUSD(result.affordablePurchasePrice.mid)}</p>
+                <p className="mt-1 text-xs text-ink-3">
+                  For context — your own target price is assessed above, not replaced by this
+                </p>
               </div>
             </>
           )}
@@ -474,17 +579,8 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
           </div>
         </div>
 
-        {/* Target price vs estimated range (Stage 2 Phase 2) */}
-        {!isRefi && inputs.targetPurchasePrice != null && inputs.targetPurchasePrice > 0 && (
-          <p className="rounded-lg border border-rule bg-paper-2 p-3 text-sm text-ink">
-            {inputs.targetPurchasePrice >= result.affordablePurchasePrice.low &&
-            inputs.targetPurchasePrice <= result.affordablePurchasePrice.high
-              ? `Your target of ${fmtUSD(inputs.targetPurchasePrice)} falls inside the estimated range.`
-              : inputs.targetPurchasePrice > result.affordablePurchasePrice.high
-                ? `Your target of ${fmtUSD(inputs.targetPurchasePrice)} is above the estimated range of ${fmtUSD(result.affordablePurchasePrice.low)}–${fmtUSD(result.affordablePurchasePrice.high)}.`
-                : `Your target of ${fmtUSD(inputs.targetPurchasePrice)} is below the estimated range of ${fmtUSD(result.affordablePurchasePrice.low)}–${fmtUSD(result.affordablePurchasePrice.high)}.`}
-          </p>
-        )}
+        {/* (The old "target vs estimated range" paragraph was replaced by the
+            TargetPriceCard above — stress-500 P2 follow-up.) */}
 
         {/* Itemized monthly cost breakdown (Stage 2 Phase 2). Point estimates
             at the target price — the range on top spans the DTI targets. */}

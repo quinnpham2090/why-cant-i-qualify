@@ -4,7 +4,7 @@ import { Questionnaire } from "@/components/Questionnaire";
 export const metadata: Metadata = {
   title: "Free Mortgage Readiness Check",
   description:
-    "Answer a few questions and get an educational mortgage readiness snapshot. No credit pull, no Social Security number. Florida.",
+    "Answer a few questions and get an educational mortgage readiness snapshot. No credit pull, no Social Security number.",
 };
 
 export default function CheckPage() {

@@ -106,6 +106,21 @@ function ChoiceGroup<T extends string>({
 
 const STEP_NAMES = ["Goal", "Programs", "Background", "Income", "Co-Borrower", "Credit", "Assets", "Debt"] as const;
 
+/** All states + DC (general site — the engine has per-state tax rates for every entry). */
+const US_STATES: [string, string][] = [
+  ["AL", "Alabama"], ["AK", "Alaska"], ["AZ", "Arizona"], ["AR", "Arkansas"], ["CA", "California"],
+  ["CO", "Colorado"], ["CT", "Connecticut"], ["DE", "Delaware"], ["DC", "District of Columbia"], ["FL", "Florida"],
+  ["GA", "Georgia"], ["HI", "Hawaii"], ["ID", "Idaho"], ["IL", "Illinois"], ["IN", "Indiana"],
+  ["IA", "Iowa"], ["KS", "Kansas"], ["KY", "Kentucky"], ["LA", "Louisiana"], ["ME", "Maine"],
+  ["MD", "Maryland"], ["MA", "Massachusetts"], ["MI", "Michigan"], ["MN", "Minnesota"], ["MS", "Mississippi"],
+  ["MO", "Missouri"], ["MT", "Montana"], ["NE", "Nebraska"], ["NV", "Nevada"], ["NH", "New Hampshire"],
+  ["NJ", "New Jersey"], ["NM", "New Mexico"], ["NY", "New York"], ["NC", "North Carolina"], ["ND", "North Dakota"],
+  ["OH", "Ohio"], ["OK", "Oklahoma"], ["OR", "Oregon"], ["PA", "Pennsylvania"], ["RI", "Rhode Island"],
+  ["SC", "South Carolina"], ["SD", "South Dakota"], ["TN", "Tennessee"], ["TX", "Texas"], ["UT", "Utah"],
+  ["VT", "Vermont"], ["VA", "Virginia"], ["WA", "Washington"], ["WV", "West Virginia"], ["WI", "Wisconsin"],
+  ["WY", "Wyoming"],
+];
+
 /**
  * P10 analytics helper: coarse enum only (loan type + occupancy) so the
  * funnel can segment completion without receiving any financial figure.
@@ -197,8 +212,9 @@ export function Questionnaire() {
   const [mfdSingleWide, setMfdSingleWide] = useState<"unsure" | "yes" | "no">("unsure");
   const [mfdPre1976, setMfdPre1976] = useState<"unsure" | "yes" | "no">("unsure");
   const [mfdFoundation, setMfdFoundation] = useState<"unsure" | "yes" | "no">("unsure");
-  // Stage 2 Phase 2: state (V1 = Florida only), buyer timeline, refi inputs
-  const [stateCode, setStateCode] = useState<string>("FL");
+  // Stage 2 Phase 2: state (general site — all states + DC, optional), buyer
+  // timeline, refi inputs
+  const [stateCode, setStateCode] = useState<string>("");
   const [timeline, setTimeline] = useState<string>(""); // "" = just researching
   const [homeValue, setHomeValue] = useState<string>("");
   const [payoff, setPayoff] = useState<string>("");
@@ -349,7 +365,7 @@ export function Questionnaire() {
     setMfdSingleWide(pick("mfdSingleWide", ["unsure", "yes", "no"] as const, "unsure"));
     setMfdPre1976(pick("mfdPre1976", ["unsure", "yes", "no"] as const, "unsure"));
     setMfdFoundation(pick("mfdFoundation", ["unsure", "yes", "no"] as const, "unsure"));
-    setStateCode(str("stateCode", "FL"));
+    setStateCode(str("stateCode", ""));
     setTimeline(str("timeline", ""));
     setHomeValue(str("homeValue", ""));
     setPayoff(str("payoff", ""));
@@ -675,7 +691,7 @@ export function Questionnaire() {
           ? (payoff.trim() !== "" ? num(payoff) : null)
           : null,
       timelineMonths: timeline.trim() !== "" ? num(timeline) || null : null,
-      state: stateCode, // V1 geofenced to Florida (see the Goal-step selector)
+      state: stateCode || undefined, // unset → national-average tax/insurance
     };
     // Auto-select documentation type when cash income is reported
     if (traditional && hasCashIncome === "yes" && effectiveIncomeDoc === IncomeDocumentation.UNKNOWN) {
@@ -824,12 +840,14 @@ export function Questionnaire() {
           <legend className="px-2 font-display text-2xl text-ink">What are you looking to do?</legend>
           <p className="mb-6 text-sm text-ink-2">{STEP_INTROS.goal}</p>
           <div className="flex flex-col gap-6">
-            {/* Q1: State (spec §5.5.2). V1 serves Florida only; the selector +
-                note keep the geofence honest instead of silently hardcoding. */}
+            {/* Q1: State — general site (all states + DC). Optional: leaving it
+                unset uses national-average tax/insurance rates, disclosed in
+                the results. Property tax varies 0.3%–2.2% by state, so picking
+                one sharpens the payment estimate meaningfully. */}
             <Field
               id="q-state"
-              label="What state is the property in?"
-              help="We currently serve Florida — more states are coming soon."
+              label="What state is the property in? (optional)"
+              help="Property taxes and insurance vary a lot by state — pick one for a sharper estimate, or leave it unset and we'll use a national average."
             >
               <select
                 id="q-state"
@@ -837,7 +855,12 @@ export function Questionnaire() {
                 value={stateCode}
                 onChange={(e) => setStateCode(e.target.value)}
               >
-                <option value="FL">Florida</option>
+                <option value="">Not sure / use a national average</option>
+                {US_STATES.map(([code, name]) => (
+                  <option key={code} value={code}>
+                    {name}
+                  </option>
+                ))}
               </select>
             </Field>
             <Field id="q-loan-purpose" label="What are you looking to do?">
@@ -1192,7 +1215,7 @@ export function Questionnaire() {
             <Field id="q-first-time" label="Is this your first home? (optional)">
               <ChoiceGroup id="q-first-time" value={isFirstTimeBuyer} onChange={setIsFirstTimeBuyer} options={[{ value: "unsure", label: "Prefer not to say" }, { value: "yes", label: "Yes" }, { value: "no", label: "No, I've owned before" }]} />
             </Field>
-            <Field id="q-dpa" label="Want down-payment-assistance programs included in the estimate?" help="Florida HFA programs can cover part or all of a 3.5% down payment — income and price caps apply per county.">
+            <Field id="q-dpa" label="Want down-payment-assistance programs included in the estimate?" help="State housing-finance-agency programs can cover part or all of a 3.5% down payment — income and price caps apply by county or area, and rules differ by state.">
               <ChoiceGroup id="q-dpa" value={interestedDpa} onChange={setInterestedDpa} options={[{ value: "unsure", label: "Not sure" }, { value: "yes", label: "Yes, include them" }, { value: "no", label: "No thanks" }]} />
             </Field>
             <Field id="q-seller-credit" label="Will the seller pay any of your closing costs? (optional)" help="Sometimes negotiated as part of the offer — it lowers the cash you bring to closing.">

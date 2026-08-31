@@ -32,7 +32,7 @@ export const RESULTS_SUBHEAD =
  */
 export const HERO_HEADLINE = "Been told 'no' on a home loan?";
 export const HERO_SUBHEAD =
-  "Let's find out what's next. Get a free, no-credit-pull snapshot of where you may stand — built for Florida home buyers.";
+  "Let's find out what's next. Get a free, no-credit-pull snapshot of where you may stand — Wherever you are buying.";
 
 /** Questionnaire step-intro microcopy (RESEARCH_EMPATHY.md §6). */
 export const STEP_INTROS = {
