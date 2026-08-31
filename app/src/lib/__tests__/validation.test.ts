@@ -6,6 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  defaultQuestionnaireState,
   validateAllSteps,
   validateStepFields,
   type QuestionnaireState,
@@ -14,45 +15,17 @@ import { CreditEvent } from "@/engine/types";
 
 /** A fully valid state — every optional field sensible, required fields set. */
 function validState(): QuestionnaireState {
-  return {
-    loanPurpose: "purchase",
+  return defaultQuestionnaireState({
     price: "350000",
-    homeValue: "",
-    payoff: "",
     yearsEmployed: "5",
     monthsCurrentJob: "14",
     income: "6000",
-    hasCashIncome: "no",
-    cashPortion: "",
-    hasSideBusiness: "no",
-    sideBusinessNet: "",
-    hasCoBorrower: "no",
-    coBorrowerIncome: "",
-    knowsScore: "yes",
     creditScore: "700",
-    creditEvent: CreditEvent.NONE,
-    yearsSinceCreditEvent: "",
     downPayment: "20000",
     liquid: "10000",
     totalAssets: "60000",
-    hoaFee: "",
-    largeDepositCount: "",
-    largeDepositTotal: "",
-    hasGiftFunds: "no",
-    giftFundsAmount: "",
-    monthlyRent: "",
     debt: "500",
-    hasStudentLoan: "no",
-    studentLoanBalance: "",
-    studentLoanPayment: "",
-    hasSupportPayments: "no",
-    supportAmount: "",
-    supportMonthsLeft: "",
-    hasCosignedDebt: "no",
-    cosignedPayment: "",
-    revolvingBalance: "",
-    revolvingLimit: "",
-  };
+  });
 }
 
 describe("validateStepFields — step 0 (Goal)", () => {

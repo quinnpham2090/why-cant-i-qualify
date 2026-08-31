@@ -279,6 +279,32 @@ export interface EngineInputs {
   largeDepositCount?: number | null;
   largeDepositTotal?: number | null;
 
+  // No-traditional-income / non-QM path (stress-500 batch-2 fixes)
+  /**
+   * Average TOTAL monthly deposits across the documented statement period
+   * (bank-statement programs qualify on deposits, not tax-return income).
+   * Never silently treated as ordinary gross income — the engine only uses it
+   * when the bank-statement documentation path is selected, and the 75% credit
+   * factor is disclosed as an assumption.
+   */
+  monthlyDepositsTotal?: number | null;
+  /** Seller-paid closing-cost credit (reduces estimated cash to close). */
+  sellerCreditAmount?: number | null;
+  /** Borrower wants down-payment-assistance programs explored. */
+  isInterestedInDownPaymentAssistance?: boolean;
+  /** Borrower asked about interest-only structures (disclosure only). */
+  prefersInterestOnly?: boolean;
+  /** VA entitlement status when the borrower knows it. */
+  vaEntitlement?: "full" | "partial" | "unsure";
+  /** Employment gap longer than 6 months within the last 2 years. */
+  employmentGap6mo?: boolean;
+  /** Monthly property-tax override when the borrower has a real figure. */
+  propertyTaxMonthlyOverride?: number | null;
+  /** Quoted/estimated rate override (%) the borrower wants the math run at. */
+  assumedRateOverridePct?: number | null;
+  /** Combined overtime+bonus monthly amount the borrower wants counted (variable income — averaged, not dollar-for-dollar). */
+  overtimeBonusMonthly?: number | null;
+
   // Itemized debts (optional; falls back to totalMonthlyDebtPayments)
   debts?: Debt[];
 }

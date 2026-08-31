@@ -25,12 +25,22 @@ export interface QuestionnaireState {
   homeValue: string;
   /** Refi: current loan balance / payoff (optional). */
   payoff: string;
-  // Step 1 — Programs (no validated fields; choice groups only)
+  // Step 1 — Programs
+  /** Quoted rate override (optional, programs step). */
+  rateOverride: string;
   // Step 2 — Background
   yearsEmployed: string;
   monthsCurrentJob: string;
   // Step 3 — Income
+  /** Whether the borrower documents traditional income (drives the required-ness of `income`). */
+  hasTraditionalIncome: "yes" | "no";
+  /** Alternative path chosen when hasTraditionalIncome === "no". */
+  altIncomePath: "unsure" | "dscr" | "bank_statement" | "asset_depletion";
+  /** Bank-statement path: average monthly deposits. */
+  monthlyDeposits: string;
   income: string;
+  /** Combined overtime+bonus amount (optional, W-2 only). */
+  overtimeBonusAmount: string;
   hasCashIncome: "yes" | "no" | "unsure";
   cashPortion: string;
   hasSideBusiness: "no" | "yes";
@@ -50,9 +60,13 @@ export interface QuestionnaireState {
   hoaFee: string;
   largeDepositCount: string;
   largeDepositTotal: string;
+  /** Monthly property-tax override (optional). */
+  taxMonthly: string;
   hasGiftFunds: "no" | "yes";
   giftFundsAmount: string;
   monthlyRent: string;
+  /** Seller credit (amount) when the borrower says the seller pays costs. */
+  sellerCredit: string;
   // Step 7 — Debt
   debt: string;
   hasStudentLoan: "no" | "yes";
@@ -73,11 +87,11 @@ export const STEP_COUNT = 8;
 
 const isBlank = (s: string): boolean => s.trim() === "";
 
-/** Numeric parse: null when blank or not a finite number. */
+/** Numeric parse: accepts "$350,000"-style formatting; null when blank/invalid. */
 function numOrNull(s: string): number | null {
-  const t = s.trim();
-  if (t === "") return null;
-  const n = Number(t);
+  const cleaned = s.replace(/[$,\s]/g, "");
+  if (cleaned === "") return null;
+  const n = Number(cleaned);
   return Number.isFinite(n) ? n : null;
 }
 
@@ -144,10 +158,13 @@ export function validateStepFields(s: QuestionnaireState, step: number): StepErr
     }
 
     // ── Step 1: Programs ─────────────────────────────────────────────────────
-    // Residency/veteran/tribal/medical/AMI fields are all choice groups with
-    // safe defaults — nothing to validate.
-    case 1:
+    case 1: {
+      checkOptionalRange(
+        e, "rateOverride", s.rateOverride, 0.5, 20,
+        "Please enter the quoted rate as a percentage (for example 6.875), or leave it blank.",
+      );
       break;
+    }
 
     // ── Step 2: Background ──────────────────────────────────────────────────
     case 2: {
@@ -164,11 +181,44 @@ export function validateStepFields(s: QuestionnaireState, step: number): StepErr
 
     // ── Step 3: Income ──────────────────────────────────────────────────────
     case 3: {
-      const income = numOrNull(s.income);
-      if (income == null || income <= 0) {
-        e.income = "Please enter your gross monthly income — a rough number is fine.";
-      } else if (income > 1_000_000) {
-        e.income = "That income looks higher than expected — please double-check the monthly amount.";
+      // No-traditional-income path (stress-500 P2): income is NOT required;
+      // the chosen alternative path drives what must be collected instead.
+      if (s.hasTraditionalIncome === "no") {
+        if (s.altIncomePath === "dscr") {
+          const rent = numOrNull(s.monthlyRent);
+          if (rent == null || rent <= 0) {
+            e.monthlyRent =
+              "Please enter the monthly rent the property earns (or expect it to earn) — investor cash-flow programs qualify on rent coverage.";
+          }
+        } else if (s.altIncomePath === "bank_statement") {
+          const deposits = numOrNull(s.monthlyDeposits);
+          if (deposits == null || deposits <= 0) {
+            e.monthlyDeposits =
+              "Please enter your average monthly deposits — bank-statement programs qualify on deposits.";
+          }
+        } else if (s.altIncomePath === "asset_depletion") {
+          const assets = numOrNull(s.totalAssets);
+          if (assets == null || assets <= 0) {
+            e.totalAssets =
+              "Enter your total savings & investments on the savings step — asset-based programs qualify on that figure (a rough number is fine).";
+          }
+        }
+      } else {
+        const income = numOrNull(s.income);
+        if (income == null || income <= 0) {
+          e.income = "Please enter your gross monthly income — a rough number is fine.";
+        } else if (income > 1_000_000) {
+          e.income = "That income looks higher than expected — please double-check the monthly amount.";
+        }
+        if (s.income != null && s.income.trim() !== "" && income == null) {
+          e.income = "Please enter your gross monthly income as a number (commas are fine).";
+        }
+      }
+      if (s.hasTraditionalIncome === "yes" && s.overtimeBonusAmount.trim() !== "") {
+        checkOptionalRange(
+          e, "overtimeBonusAmount", s.overtimeBonusAmount, 0, 1_000_000,
+          "Please enter the combined monthly overtime and bonus as a number.",
+        );
       }
       if (s.hasCashIncome === "yes") {
         checkOptionalRange(
@@ -233,6 +283,10 @@ export function validateStepFields(s: QuestionnaireState, step: number): StepErr
         "Please enter the monthly HOA fee as a number (0 if none).",
       );
       checkOptionalRange(
+        e, "taxMonthly", s.taxMonthly, 0, 10_000,
+        "Please enter the monthly property taxes as a number (0 if unknown).",
+      );
+      checkOptionalRange(
         e, "largeDepositCount", s.largeDepositCount, 0, 99,
         "Please enter the number of large deposits (0 if none).",
       );
@@ -252,6 +306,12 @@ export function validateStepFields(s: QuestionnaireState, step: number): StepErr
         e, "monthlyRent", s.monthlyRent, 0, 50_000,
         "Please enter the expected monthly rent as a number.",
       );
+      if (s.sellerCredit.trim() !== "") {
+        checkOptionalRange(
+          e, "sellerCredit", s.sellerCredit, 0, 1_000_000,
+          "Please enter the seller's contribution as a number (0 if none).",
+        );
+      }
       break;
     }
 
@@ -300,6 +360,61 @@ export function validateStepFields(s: QuestionnaireState, step: number): StepErr
   }
 
   return e;
+}
+
+/**
+ * A `QuestionnaireState` with every optional string filled to its blank/safe
+ * default — used by tests and by the component when a caller lacks the full
+ * shape (e.g. restoring a partial snapshot).
+ */
+export function defaultQuestionnaireState(overrides: Partial<QuestionnaireState> = {}): QuestionnaireState {
+  return {
+    loanPurpose: "purchase",
+    price: "",
+    homeValue: "",
+    payoff: "",
+    rateOverride: "",
+    yearsEmployed: "",
+    monthsCurrentJob: "",
+    hasTraditionalIncome: "yes",
+    altIncomePath: "unsure",
+    monthlyDeposits: "",
+    income: "",
+    overtimeBonusAmount: "",
+    hasCashIncome: "no",
+    cashPortion: "",
+    hasSideBusiness: "no",
+    sideBusinessNet: "",
+    hasCoBorrower: "no",
+    coBorrowerIncome: "",
+    knowsScore: "yes",
+    creditScore: "",
+    creditEvent: CreditEvent.NONE,
+    yearsSinceCreditEvent: "",
+    downPayment: "",
+    liquid: "",
+    totalAssets: "",
+    hoaFee: "",
+    largeDepositCount: "",
+    largeDepositTotal: "",
+    taxMonthly: "",
+    hasGiftFunds: "no",
+    giftFundsAmount: "",
+    monthlyRent: "",
+    sellerCredit: "",
+    debt: "",
+    hasStudentLoan: "no",
+    studentLoanBalance: "",
+    studentLoanPayment: "",
+    hasSupportPayments: "no",
+    supportAmount: "",
+    supportMonthsLeft: "",
+    hasCosignedDebt: "no",
+    cosignedPayment: "",
+    revolvingBalance: "",
+    revolvingLimit: "",
+    ...overrides,
+  };
 }
 
 /**

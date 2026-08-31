@@ -1,6 +1,6 @@
 # Borrower Denial Stress Test — 40 Scenarios
 
-> **Generated:** 2026-08-30 · **Engine:** runDiagnostic (deterministic, no I/O)
+> **Generated:** 2026-08-31 · **Engine:** runDiagnostic (deterministic, no I/O)
 > **Purpose:** Stress-test the diagnostic engine against 40 real-world "why I was denied" stories, then mine the gaps for new questions and loan solutions.
 
 ---
@@ -8,7 +8,7 @@
 ## Summary
 
 - **Scenarios:** 40
-- **Engine tiers:** some_considerations 16 · workable 17 · good_fit 3 · limited_fit 3 · strong_fit 1
+- **Engine tiers:** some_considerations 10 · workable 14 · good_fit 3 · limited_fit 12 · strong_fit 1
 - **Obstacle detection:** 13 yes / 22 partially / 3 correctly-resolved (false denial averted) / 2 missed
 - **Key finding:** DTI, credit-event waiting periods, and down-payment floors are well-caught; revolving-utilization granularity, alimony/cosigned nuance, HOA-cert specifics, flood-cost impact on DTI, and declining-income trends are blind spots.
 
@@ -26,16 +26,16 @@
 | 6 | CREDIT-06 | 45-year-old Fort Lauderdale sales manager | Short sale waiting: conventional 48mo, FHA 36mo; 24mo elapsed fails bo | good_fit | credit: The estimated credit score may be below the typical requi | yes |
 | 7 | CREDIT-07 | 52-year-old St. Pete homeowner | Deed-in-lieu 48mo conventional; 14mo elapsed fails; FHA 36mo would als | workable | credit: The estimated credit score may be below the typical requi | yes |
 | 8 | CREDIT-08 | 29-year-old Jacksonville renter | High revolving utilization not directly modeled; FICO band score 75 bu | workable | debt: The estimated debt-to-income ratio appears to be above 50%. | partially |
-| 9 | INCOME-01 | 29-year-old freelance hairstylist | Self-employed <2yr requires 2yr tax returns; 1yr return + short tenure | some_considerations | debt: The estimated debt-to-income ratio appears to be above 50%. | partially |
+| 9 | INCOME-01 | 29-year-old freelance hairstylist | Self-employed <2yr requires 2yr tax returns; 1yr return + short tenure | limited_fit | debt: The estimated debt-to-income ratio appears to be above 50%. | partially |
 | 10 | INCOME-02 | 38-year-old Orlando auto salesman | Declining commission trend: underwriter must use lower of 2yr avg or m | some_considerations | debt: The estimated debt-to-income ratio appears to be above 50%. | partially |
-| 11 | INCOME-03 | 24-year-old Jacksonville gig worker | Undocumented cash + inconsistent deposits + 60-day late + collections; | some_considerations | debt: The estimated debt-to-income ratio appears to be above 50%. | partially |
-| 12 | INCOME-04 | 31-year-old Miami Beach bartender | Variable hourly must be averaged over 2yr; recent high not usable; fro | some_considerations | debt: The estimated debt-to-income ratio appears to be above 50%. | partially |
-| 13 | INCOME-05 | 42-year-old Tampa teacher + Etsy Schedule C loss -$8 | Schedule C loss offsets W-2 per agency; mixed income averaging 80% sti | workable | debt: The estimated debt-to-income ratio appears to be above 50%. | partially |
+| 11 | INCOME-03 | 24-year-old Jacksonville gig worker | Undocumented cash + inconsistent deposits + 60-day late + collections; | limited_fit | debt: The estimated debt-to-income ratio appears to be above 50%. | partially |
+| 12 | INCOME-04 | 31-year-old Miami Beach bartender | Variable hourly must be averaged over 2yr; recent high not usable; fro | limited_fit | debt: The estimated debt-to-income ratio appears to be above 50%. | partially |
+| 13 | INCOME-05 | 42-year-old Tampa teacher + Etsy Schedule C loss -$8 | Schedule C loss offsets W-2 per agency; mixed income averaging 80% sti | limited_fit | debt: The estimated debt-to-income ratio appears to be above 50%. | partially |
 | 14 | INCOME-06 | 27-year-old Army veteran | W2 under 1yr, new field, probationary; VA still requires stable likely | limited_fit | credit: The estimated credit score may be below the typical requi | partially |
 | 15 | INCOME-07 | 50-year-old Fort Myers contractor | Bank statement program requires sourcing and limits NSFs; large transf | some_considerations | debt: The estimated debt-to-income ratio appears to be above 50%. | partially |
 | 16 | INCOME-08 | 45-year-old Orlando RE agent | 2yr avg net Schedule C $32k, not 1099 gross; write-offs decimate quali | good_fit | — | no |
-| 17 | DTI-01 | 28-year-old Orlando teacher | DTI 57.8% exceeds FHA program ceiling | workable | debt: The estimated debt-to-income ratio appears to be above 50%. | yes |
-| 18 | DTI-02 | 36-year-old Tampa renter | Front-end DTI >40% triggers payment sub-score 20 and manual overlay; h | workable | debt: The estimated debt-to-income ratio appears to be above 50%. | yes |
+| 17 | DTI-01 | 28-year-old Orlando teacher | DTI 57.8% exceeds FHA program ceiling | limited_fit | debt: The estimated debt-to-income ratio appears to be above 50%. | yes |
+| 18 | DTI-02 | 36-year-old Tampa renter | Front-end DTI >40% triggers payment sub-score 20 and manual overlay; h | limited_fit | debt: The estimated debt-to-income ratio appears to be above 50%. | yes |
 | 19 | DTI-03 | 29-year-old Miami grad | Deferred student loan 1% rule; borrower expected $0, engine correctly  | workable | debt: The estimated debt-to-income ratio appears to be above 50%. | yes |
 | 20 | DTI-04 | 38-year-old Fort Lauderdale divorced dad | Alimony with <10 months remaining should be excluded per FNMA (engine  | workable | — | resolved |
 | 21 | DTI-05 | 31-year-old Orlando cosigner | Cosigned debt with on-time 12mo history should be excluded; questionna | workable | — | resolved |
@@ -43,12 +43,12 @@
 | 23 | DTI-07 | 33-year-old Tampa renter | Revolving 5% of balance rule exceeds stated minDue; borrower underesti | workable | debt: The estimated debt-to-income ratio appears to be above 50%. | yes |
 | 24 | DTI-08 | 39-year-old Fort Myers borrower | Stacked debts cause DTI 68% >50% conventional ceiling; needs debt payd | workable | debt: The estimated debt-to-income ratio appears to be above 50%. | yes |
 | 25 | CASH-01 | 24-year-old Jacksonville barista | Down 1.9% <3% conventional/3.5% FHA; gift unsourced fails; cash-to-clo | some_considerations | cash: The down payment you entered is below the typical 3% minimu | yes |
-| 26 | CASH-02 | 68-year-old retired Duval teacher | Reserves 1200 < 2 months PITIA+HOA; retiree fixed income with minimal  | some_considerations | debt: The estimated debt-to-income ratio appears to be above 50%. | partially |
+| 26 | CASH-02 | 68-year-old retired Duval teacher | Reserves 1200 < 2 months PITIA+HOA; retiree fixed income with minimal  | limited_fit | debt: The estimated debt-to-income ratio appears to be above 50%. | partially |
 | 27 | CASH-03 | 45-year-old Orlando investor | Investment 2-4 unit needs 20-25% down; 6mo reserves for subject + 2 re | workable | credit: The estimated credit score may be below the typical requi | partially |
 | 28 | CASH-04 | 38-year-old Tampa plumber | 2.82% < FHA 3.5% floor; unsourced large deposits; cash-to-close shortf | limited_fit | cash: The down payment you entered is below the typical 3.5% mini | yes |
 | 29 | CASH-05 | 29-year-old Miami gig worker | 0% <3% conv/3.5% FHA/5% manufactured min; 0 months reserves; cash-undo | limited_fit | credit: The estimated credit score may be below the typical requi | partially |
 | 30 | CASH-06 | 34-year-old Pensacola veteran VA 0% down $390k | VA 0% still needs closing + reserves; 0.4mo reserves + unsourced Zelle | some_considerations | credit: The estimated credit score may be below the typical requi | partially |
-| 31 | CASH-07 | 31-year-old Gainesville LPN | 2.09% <3.5% FHA; $6k gift undocumented cannot count; 0.2mo reserves | some_considerations | cash: The down payment you entered is below the typical 3.5% mini | yes |
+| 31 | CASH-07 | 31-year-old Gainesville LPN | 2.09% <3.5% FHA; $6k gift undocumented cannot count; 0.2mo reserves | limited_fit | cash: The down payment you entered is below the typical 3.5% mini | yes |
 | 32 | CASH-08 | 42 & 40 Miami teachers dual W-2 | 25% down meets LTV but $0 reserves fails 6-12mo PITIA+ flood for >$500 | strong_fit | cash: You may have little or nothing left in savings after closin | resolved |
 | 33 | PROP-01 | 32-year-old Brickell marketing coordinator | Non-warrantable: litigation + single-entity >20% exceeds Fannie/Freddi | workable | credit: The estimated credit score may be below the typical requi | partially |
 | 34 | PROP-02 | 58-year-old retired veteran | Manufactured: single-wide, pre-HUD code, leased land, no permanent fou | some_considerations | credit: The estimated credit score may be below the typical requi | partially |
@@ -57,7 +57,7 @@
 | 37 | PROP-05 | 29-year-old Miami crypto trader | Large unexplained deposit $15k >50% of monthly income without 2mo sour | workable | debt: The estimated debt-to-income ratio appears to be above 50%. | partially |
 | 38 | PROP-06 | 36-year-old Tampa investor | Occupancy mismatch: conventional_conf requires primary; investment 2-4 | workable | debt: The estimated debt-to-income ratio appears to be above 50%. | partially |
 | 39 | PROP-07 | 44-year-old rural Levy County buyer | USDA requires 640 FICO (lender overlay) + rural location; 610 fails; q | some_considerations | credit: The estimated credit score may be below the typical requi | partially |
-| 40 | PROP-08 | 31-year-old ITIN holder | No FICO + ITIN: conventional requires SSN + FICO 620; alternative is I | some_considerations | debt: The estimated debt-to-income ratio appears to be above 50%. | partially |
+| 40 | PROP-08 | 31-year-old ITIN holder | No FICO + ITIN: conventional requires SSN + FICO 620; alternative is I | limited_fit | debt: The estimated debt-to-income ratio appears to be above 50%. | partially |
 
 ---
 
@@ -77,7 +77,7 @@
 
 **Secondary:** [debt] The estimated debt-to-income ratio appears to be above 50%.
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, fha_ufmip
 
 **Detected?** yes — _Engine obstacle matches denial reason_
 
@@ -95,7 +95,7 @@
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, pmi_removal_note
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -113,7 +113,7 @@
 
 **Primary obstacle:** [credit] The estimated credit score may be below the typical requirement for the program you selected; other programs may fit better. *(fix: 3-12 months)*
 
-**Secondary:** [credit] A prior credit event has about 2.5 year(s) left in its typical waiting period.
+**Secondary:** [credit] A prior credit event has about 2.5 year(s) left in its typical waiting period. For reference, conventional loans commonly wait 4 year(s) and FHA 2 years for this event type — lender overlays vary, and some non-QM lenders consider files sooner with compensating factors.
 
 **Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate
 
@@ -133,7 +133,7 @@
 
 **Primary obstacle:** [credit] The estimated credit score may be below the typical requirement for the program you selected; other programs may fit better. *(fix: 3-12 months)*
 
-**Secondary:** [credit] A prior credit event has about 2.2 year(s) left in its typical waiting period. · [debt] The estimated debt-to-income ratio appears to be above 50%.
+**Secondary:** [credit] A prior credit event has about 2.2 year(s) left in its typical waiting period. For reference, conventional loans commonly wait 7 year(s) and FHA 3 years for this event type — lender overlays vary, and some non-QM lenders consider files sooner with compensating factors. · [debt] The estimated debt-to-income ratio appears to be above 50%.
 
 **Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate
 
@@ -153,7 +153,7 @@
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
-**Assumptions disclosed:** hazard_insurance, fico_default, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** hazard_insurance, fico_default, assumed_rate, mortgage_insurance, pmi_removal_note
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -171,7 +171,7 @@
 
 **Primary obstacle:** [credit] The estimated credit score may be below the typical requirement for the program you selected; other programs may fit better. *(fix: 3-12 months)*
 
-**Secondary:** [credit] A prior credit event has about 2.0 year(s) left in its typical waiting period.
+**Secondary:** [credit] A prior credit event has about 2.0 year(s) left in its typical waiting period. For reference, conventional loans commonly wait 4 year(s) and FHA 3 years for this event type — lender overlays vary, and some non-QM lenders consider files sooner with compensating factors.
 
 **Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate
 
@@ -191,7 +191,7 @@
 
 **Primary obstacle:** [credit] The estimated credit score may be below the typical requirement for the program you selected; other programs may fit better. *(fix: 3-12 months)*
 
-**Secondary:** [credit] A prior credit event has about 2.8 year(s) left in its typical waiting period.
+**Secondary:** [credit] A prior credit event has about 2.8 year(s) left in its typical waiting period. For reference, conventional loans commonly wait 4 year(s) and FHA 3 years for this event type — lender overlays vary, and some non-QM lenders consider files sooner with compensating factors.
 
 **Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate
 
@@ -211,7 +211,7 @@
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, pmi_removal_note
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -225,13 +225,13 @@
 
 **Inputs:** income $7200/mo (self_employed, full_tax_1yr), FICO 732, DTI inputs debt $1680/mo, down $15500 on $395000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `some_considerations` (48), DTI 68.3% back-end / 45.0% front-end, eligible `[conventional_conf, conventional_jumbo, fha, naca, non_qm_jumbo]`, recommended `fha`, confidence `high`
+**Engine result:** tier `limited_fit` (39), DTI 68.3% back-end / 45.0% front-end, eligible `[conventional_conf, conventional_jumbo, fha, naca, non_qm_jumbo]`, recommended `fha`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
 **Secondary:** [documentation] Self-employment history of under two years typically requires more tax-return history to qualify.
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, non_qm_rate_addon, qualifying_income_non_qm, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** hazard_insurance, fico_haircut, non_qm_rate_addon, qualifying_income_non_qm, assumed_rate, mortgage_insurance, pmi_removal_note
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -249,7 +249,7 @@
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
-**Assumptions disclosed:** commission_haircut, hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** commission_haircut, hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, pmi_removal_note
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -263,11 +263,11 @@
 
 **Inputs:** income $6200/mo (mixed, cash_undocumented), FICO 660, DTI inputs debt $980/mo, down $14250 on $285000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `some_considerations` (44), DTI 68.9% back-end / 49.2% front-end, eligible `[conventional_conf, fha, naca, bank_statement]`, recommended `conventional_conf`, confidence `high`
+**Engine result:** tier `limited_fit` (39), DTI 68.9% back-end / 49.2% front-end, eligible `[conventional_conf, fha, naca, bank_statement]`, recommended `bank_statement`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
-**Assumptions disclosed:** mixed_income_haircut, hazard_insurance, fico_haircut, cash_income_estimate, non_qm_rate_addon, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** mixed_income_haircut, hazard_insurance, fico_haircut, cash_income_estimate, non_qm_rate_addon, assumed_rate, mortgage_insurance, pmi_removal_note
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -281,11 +281,11 @@
 
 **Inputs:** income $5800/mo (variable_hourly, w2_stubs), FICO 715, DTI inputs debt $1120/mo, down $10500 on $350000, condo_warrantable / primary, FL, reserves $10000
 
-**Engine result:** tier `some_considerations` (51), DTI 78.2% back-end / 58.9% front-end, eligible `[conventional_conf, fha, naca, non_qm_jumbo]`, recommended `fha`, confidence `high`
+**Engine result:** tier `limited_fit` (39), DTI 78.2% back-end / 58.9% front-end, eligible `[conventional_conf, fha, naca, non_qm_jumbo]`, recommended `fha`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
-**Assumptions disclosed:** variable_income_haircut, flood_insurance, hazard_insurance, fico_haircut, non_qm_rate_addon, qualifying_income_non_qm, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** variable_income_haircut, flood_insurance, hazard_insurance, fico_haircut, non_qm_rate_addon, qualifying_income_non_qm, assumed_rate, mortgage_insurance, pmi_removal_note
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -299,13 +299,13 @@
 
 **Inputs:** income $6800/mo (mixed, full_tax_2yr), FICO 790, DTI inputs debt $1850/mo, down $42500 on $425000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `workable` (57), DTI 70.8% back-end / 43.6% front-end, eligible `[conventional_conf, conventional_jumbo, fha, naca, non_qm_jumbo]`, recommended `conventional_conf`, confidence `high`
+**Engine result:** tier `limited_fit` (39), DTI 70.8% back-end / 43.6% front-end, eligible `[conventional_conf, conventional_jumbo, fha, naca, non_qm_jumbo]`, recommended `conventional_conf`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
 **Strengths:** Estimated credit score is in the top pricing tier.
 
-**Assumptions disclosed:** mixed_income_haircut, hazard_insurance, fico_haircut, non_qm_rate_addon, qualifying_income_non_qm, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** mixed_income_haircut, hazard_insurance, fico_haircut, non_qm_rate_addon, qualifying_income_non_qm, assumed_rate, mortgage_insurance, pmi_removal_note
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -339,11 +339,11 @@
 
 **Inputs:** income $14500/mo (self_employed, bank_statement_12), FICO 680, DTI inputs debt $2200/mo, down $82500 on $550000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `some_considerations` (49), DTI 57.4% back-end / 37.2% front-end, eligible `[conventional_conf, fha, naca, bank_statement]`, recommended `conventional_conf`, confidence `high`
+**Engine result:** tier `some_considerations` (49), DTI 57.4% back-end / 37.2% front-end, eligible `[conventional_conf, fha, naca, bank_statement]`, recommended `bank_statement`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, bank_statement_income, non_qm_rate_addon, qualifying_income_non_qm, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** hazard_insurance, fico_haircut, bank_statement_income, non_qm_rate_addon, qualifying_income_non_qm, assumed_rate, mortgage_insurance, pmi_removal_note
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -375,11 +375,11 @@
 
 **Inputs:** income $5800/mo (w2, unknown doc), FICO 700, DTI inputs debt $1270/mo, down $13475 on $385000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `workable` (55), DTI 75.7% back-end / 53.8% front-end, eligible `[conventional_conf, fha, naca]`, recommended `fha`, confidence `high`
+**Engine result:** tier `limited_fit` (39), DTI 75.7% back-end / 53.8% front-end, eligible `[conventional_conf, fha, naca]`, recommended `fha`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, fha_ufmip
 
 **Detected?** yes — _Engine obstacle matches denial reason_
 
@@ -393,11 +393,11 @@
 
 **Inputs:** income $4500/mo (w2, unknown doc), FICO 700, DTI inputs debt $650/mo, down $10000 on $280000, sfr / primary, FL, reserves $10000
 
-**Engine result:** tier `workable` (57), DTI 77.6% back-end / 63.1% front-end, eligible `[conventional_conf, fha, naca]`, recommended `fha`, confidence `high`
+**Engine result:** tier `limited_fit` (39), DTI 77.6% back-end / 63.1% front-end, eligible `[conventional_conf, fha, naca]`, recommended `fha`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, pmi_removal_note
 
 **Detected?** yes — _Engine obstacle matches denial reason_
 
@@ -415,7 +415,7 @@
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, pmi_removal_note
 
 **Detected?** yes — _Engine obstacle matches denial reason_
 
@@ -431,7 +431,7 @@
 
 **Engine result:** tier `workable` (69), DTI 48.0% back-end / 36.2% front-end, eligible `[conventional_conf, conventional_jumbo, fha, naca]`, recommended `conventional_conf`, confidence `high`
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, pmi_removal_note
 
 **Detected?** resolved — _Engine applies the program exclusion and averts the false denial_
 
@@ -447,7 +447,7 @@
 
 **Engine result:** tier `workable` (62), DTI 52.7% back-end / 40.5% front-end, eligible `[conventional_conf, fha, naca]`, recommended `conventional_conf`, confidence `high`
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, pmi_removal_note
 
 **Detected?** resolved — _Engine applies the program exclusion and averts the false denial_
 
@@ -463,7 +463,7 @@
 
 **Engine result:** tier `workable` (59), DTI 53.6% back-end / 44.2% front-end, eligible `[conventional_conf, fha, naca]`, recommended `conventional_conf`, confidence `high`
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, pmi_removal_note
 
 **Detected?** no — _Engine misses the real denial reason_
 
@@ -481,7 +481,7 @@
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, pmi_removal_note
 
 **Detected?** yes — _Engine obstacle matches denial reason_
 
@@ -499,7 +499,7 @@
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, pmi_removal_note
 
 **Detected?** yes — _Engine obstacle matches denial reason_
 
@@ -519,7 +519,7 @@
 
 **Secondary:** [debt] The estimated debt-to-income ratio appears to be above 50%. · [cash] Savings after closing cover less than one month of payments; building toward two to six months of reserves would strengthen the file.
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, co_borrower_credit, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** hazard_insurance, fico_haircut, co_borrower_credit, assumed_rate, mortgage_insurance, pmi_removal_note
 
 **Detected?** yes — _Engine obstacle matches denial reason_
 
@@ -533,13 +533,13 @@
 
 **Inputs:** income $3850/mo (retired_fixed, w2_stubs), FICO 744, DTI inputs debt $420/mo, down $14000 on $280000, condo_warrantable / primary, FL, reserves $1200
 
-**Engine result:** tier `some_considerations` (52), DTI 77.1% back-end / 66.2% front-end, eligible `[conventional_conf, conventional_jumbo, fha, naca, non_qm_jumbo]`, recommended `conventional_conf`, confidence `high`
+**Engine result:** tier `limited_fit` (39), DTI 77.1% back-end / 66.2% front-end, eligible `[conventional_conf, conventional_jumbo, fha, naca, non_qm_jumbo]`, recommended `conventional_conf`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
 **Secondary:** [cash] Savings after closing cover less than one month of payments; building toward two to six months of reserves would strengthen the file.
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, non_qm_rate_addon, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** hazard_insurance, fico_haircut, non_qm_rate_addon, assumed_rate, mortgage_insurance, pmi_removal_note
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -559,7 +559,7 @@
 
 **Secondary:** [cash] Investment properties with 2-4 units typically require a down payment of 20% or more; the amount entered is below that level. · [cash] Savings after closing cover less than one month of payments; building toward two to six months of reserves would strengthen the file.
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, non_qm_rate_addon, non_qm_rate_addon, qualifying_income_non_qm, assumed_rate, mortgage_insurance, dscr_coverage
+**Assumptions disclosed:** hazard_insurance, fico_haircut, non_qm_rate_addon, qualifying_income_non_qm, assumed_rate, mortgage_insurance, dscr_coverage, pmi_removal_note
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -579,7 +579,7 @@
 
 **Secondary:** [debt] The estimated debt-to-income ratio appears to be above 50%. · [cash] Savings after closing cover less than one month of payments; building toward two to six months of reserves would strengthen the file.
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, fha_ufmip
 
 **Detected?** yes — _Engine obstacle matches denial reason_
 
@@ -599,7 +599,7 @@
 
 **Secondary:** [debt] The estimated debt-to-income ratio appears to be above 50%. · [property] Manufactured homes must sit on owned land with a permanent foundation and typically must be a multi-section (double-wide or larger) home built after 1976 to use most standard loan programs. · [cash] You may have little or nothing left in savings after closing; lenders typically want at least one to six months of payments in reserve after the loan closes.
 
-**Assumptions disclosed:** phantom_down_payment, variable_income_haircut, flood_insurance, hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, confidence_range_width
+**Assumptions disclosed:** phantom_down_payment, variable_income_haircut, flood_insurance, hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, confidence_range_width, fha_ufmip
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -619,7 +619,7 @@
 
 **Secondary:** [debt] The estimated debt-to-income ratio appears to be above 50%. · [cash] Savings after closing cover less than one month of payments; building toward two to six months of reserves would strengthen the file.
 
-**Assumptions disclosed:** phantom_down_payment, hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, confidence_range_width
+**Assumptions disclosed:** phantom_down_payment, hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, confidence_range_width, pmi_removal_note
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -633,13 +633,13 @@
 
 **Inputs:** income $5200/mo (w2, unknown doc), FICO 662, DTI inputs debt $610/mo, down $7000 on $335000, townhome / primary, FL, reserves $500
 
-**Engine result:** tier `some_considerations` (47), DTI 72.5% back-end / 60.8% front-end, eligible `[conventional_conf, fha, naca]`, recommended `fha`, confidence `high`
+**Engine result:** tier `limited_fit` (39), DTI 72.5% back-end / 60.8% front-end, eligible `[conventional_conf, fha, naca]`, recommended `fha`, confidence `high`
 
 **Primary obstacle:** [cash] The down payment you entered is below the typical 3.5% minimum for this program. *(fix: 0-3 months)*
 
 **Secondary:** [debt] The estimated debt-to-income ratio appears to be above 50%. · [cash] Savings after closing cover less than one month of payments; building toward two to six months of reserves would strengthen the file.
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, fha_ufmip
 
 **Detected?** yes — _Engine obstacle matches denial reason_
 
@@ -699,7 +699,7 @@
 
 **Secondary:** [debt] The estimated debt-to-income ratio appears to be above 50%. · [property] Manufactured homes must sit on owned land with a permanent foundation and typically must be a multi-section (double-wide or larger) home built after 1976 to use most standard loan programs.
 
-**Assumptions disclosed:** phantom_down_payment, hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, confidence_range_width
+**Assumptions disclosed:** phantom_down_payment, hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, confidence_range_width, pmi_removal_note
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -719,7 +719,7 @@
 
 **Secondary:** [cash] Investment properties with 2-4 units typically require a down payment of 20% or more; the amount entered is below that level.
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, non_qm_rate_addon, non_qm_rate_addon, qualifying_income_non_qm, assumed_rate, mortgage_insurance, dscr_coverage
+**Assumptions disclosed:** hazard_insurance, fico_haircut, non_qm_rate_addon, qualifying_income_non_qm, assumed_rate, mortgage_insurance, dscr_coverage, pmi_removal_note
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -757,7 +757,7 @@
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, pmi_removal_note
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -775,7 +775,7 @@
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
-**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance
+**Assumptions disclosed:** hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, pmi_removal_note
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -795,7 +795,7 @@
 
 **Secondary:** [debt] The estimated debt-to-income ratio appears to be above 50%.
 
-**Assumptions disclosed:** phantom_down_payment, hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, confidence_range_width
+**Assumptions disclosed:** phantom_down_payment, hazard_insurance, fico_haircut, assumed_rate, mortgage_insurance, confidence_range_width, fha_ufmip
 
 **Detected?** partially — _Engine flags a related area but not the precise trigger_
 
@@ -809,7 +809,7 @@
 
 **Inputs:** income $0/mo (unknown, asset_depletion), FICO unknown, DTI inputs debt $300/mo, down $120000 on $400000, sfr / primary, FL, reserves $680000
 
-**Engine result:** tier `some_considerations` (41), DTI 273428.8% back-end / 243428.8% front-end, eligible `[conventional_conf, fha, naca]`, recommended `conventional_conf`, confidence `high`
+**Engine result:** tier `limited_fit` (39), DTI 273428.8% back-end / 243428.8% front-end, eligible `[conventional_conf, fha, naca]`, recommended `conventional_conf`, confidence `high`
 
 **Primary obstacle:** [debt] The estimated debt-to-income ratio appears to be above 50%. *(fix: 0-3 months)*
 
@@ -906,4 +906,4 @@
 
 ---
 
-*Method: 40 scenarios run through the live deterministic engine at 2026-08-30T15:17:06.472Z. Tiers, DTI, eligible programs, obstacles, strengths, assumptions, and confidence are the engine's actual outputs. Missing-question and solution rankings are synthesized from the coverage gaps above.*
+*Method: 40 scenarios run through the live deterministic engine at 2026-08-31T03:26:30.364Z. Tiers, DTI, eligible programs, obstacles, strengths, assumptions, and confidence are the engine's actual outputs. Missing-question and solution rankings are synthesized from the coverage gaps above.*

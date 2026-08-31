@@ -1,6 +1,7 @@
 /** Obstacle + strength identification (rule-engine-spec §4.10, thresholds T20). */
 
-import { LoanType, PropertyType, PropertyUse, IncomeType, type EngineInputs, type Obstacle, type Strength, type SubScore } from "./types";
+import { LoanPurpose, LoanType, PropertyType, PropertyUse, IncomeType, type EngineInputs, type Obstacle, type Strength, type SubScore } from "./types";
+import { WAITING_PERIOD_MONTHS } from "./tables";
 import type { CreditProfile } from "./credit";
 import { minDownPctFor } from "./programs";
 
@@ -14,11 +15,44 @@ export function identifyObstacles(
   const obstacles: Obstacle[] = [];
   let rank = 1;
 
-  // 1. FICO below all program floors
+  // 0. Refinance equity walls (stress-500 P1 C1) — FIRST, because CLTV decides
+  // whether ANY standard refinance fits; a 300-FICO-style credit list must not
+  // outrank the fact that no program can finance this scenario.
+  if (
+    (i.loanPurpose === LoanPurpose.REFI_RATE_TERM || i.loanPurpose === LoanPurpose.REFI_CASH_OUT) &&
+    i.currentPayoffAmount != null &&
+    i.estimatedHomeValue != null &&
+    i.estimatedHomeValue > 0
+  ) {
+    const cltv = (i.currentPayoffAmount / i.estimatedHomeValue) * 100;
+    if (i.currentPayoffAmount > i.estimatedHomeValue) {
+      obstacles.push({
+        rank: rank++, category: "equity", severity: "primary",
+        description: `The loan balance you entered (${Math.round(cltv)}% of your home's estimated value) is higher than the home is worth. Refinancing underwater does not fit standard refinance programs — and alternative lenders generally still require some equity, so a non-QM program does not automatically solve this. Options to discuss with a licensed originator include negotiating the payoff, a loan modification with your current servicer, or rebuilding equity over time.`,
+        fixHorizon: "out_of_user_control",
+      });
+    } else if (i.loanPurpose === LoanPurpose.REFI_CASH_OUT && cltv > 80) {
+      obstacles.push({
+        rank: rank++, category: "equity", severity: "primary",
+        description: `Cash-out refinances typically cap the new loan near 80% of the home's value; your balance plus cash-out would be about ${Math.round(cltv)}%. Most lenders cannot reach that combination (program caps vary — FHA/VA differ).`,
+        fixHorizon: "0-3 months",
+      });
+    } else if (cltv > 95) {
+      obstacles.push({
+        rank: rank++, category: "equity", severity: "secondary",
+        description: `The new loan would be about ${Math.round(cltv)}% of your home's value. Refinancing above roughly 95% limits conventional options; FHA, VA, and some specialized programs allow higher — rules differ by program.`,
+        fixHorizon: "0-3 months",
+      });
+    }
+  }
+
+  // 1. FICO below all program floors — prominent, with improvement framing
+  // (stress-500 P1 fix: a 300–499 score previously read as "Good fit").
   if (credit.fico < 500) {
     obstacles.push({
       rank: rank++, category: "credit", severity: "primary",
-      description: "The estimated credit score is below the typical minimum for the programs reviewed.",
+      description:
+        "The estimated credit score is below the minimum every program reviewed requires (most start at 500–620). Credit improvement may be required before an application is likely to succeed — the snapshot below shows the strongest starting points, and a licensed loan originator can map the fastest rebuild path.",
       fixHorizon: "3-12 months",
     });
   }
@@ -32,11 +66,18 @@ export function identifyObstacles(
     });
   }
 
-  // 3. Credit event within waiting period
+  // 3. Credit event within waiting period — with the actual typical waits
+  // named (stress-500 P4): "waiting period" alone gave borrowers no timeline.
   if (!credit.waitingClear && credit.yearsRemaining > 0) {
+    const event = i.creditEvent;
+    const waits = event != null ? WAITING_PERIOD_MONTHS[event] : undefined;
+    const conv = waits?.conventional != null ? (waits.conventional / 12).toFixed(0) : null;
+    const fha = waits?.fha != null ? (waits.fha / 12) : null;
+    const fhaTxt = fha != null ? (fha >= 1 ? `${fha} years` : "about a year") : null;
     obstacles.push({
       rank: rank++, category: "credit", severity: "primary",
-      description: `A prior credit event has about ${credit.yearsRemaining.toFixed(1)} year(s) left in its typical waiting period.`,
+      description:
+        `A prior credit event has about ${credit.yearsRemaining.toFixed(1)} year(s) left in its typical waiting period. For reference, conventional loans commonly wait ${conv ?? "2–7"} year(s) and FHA ${fhaTxt ?? "1–3 years"} for this event type — lender overlays vary, and some non-QM lenders consider files sooner with compensating factors.`,
       fixHorizon: credit.yearsRemaining > 1 ? "12+ months" : "3-12 months",
     });
   }
@@ -101,6 +142,52 @@ export function identifyObstacles(
       fixHorizon: "out_of_user_control",
     });
   }
+
+  // 6d. VA occupancy rule (stress-500 P1): VA requires the home to be the
+  // veteran's primary residence. A pure investment (or generally a second
+  // home) does not fit the VA purchase benefit — say so instead of leaving
+  // the user to wonder why VA vanished from their list.
+  if (i.isVeteran === true && i.loanType === LoanType.VA && i.propertyUse !== PropertyUse.PRIMARY) {
+    obstacles.push({
+      rank: rank++, category: "property", severity: "primary",
+      description:
+        i.propertyUse === PropertyUse.INVESTMENT
+          ? "VA loans are for homes the veteran lives in as their primary residence — a pure investment property does not fit VA financing, so investor programs are the relevant paths instead."
+          : "VA loans generally require the home to be your primary residence; a second home usually needs a different program (limited exceptions are case-by-case through a lender).",
+      fixHorizon: "out_of_user_control",
+    });
+  }
+
+  // 6e. Employment gap (stress-500 P3): a 6+ month gap in the last two years
+  // requires a return-to-work explanation before the income counts fully.
+  if (i.employmentGap6mo === true) {
+    obstacles.push({
+      rank: rank++, category: "documentation", severity: "secondary",
+      description:
+        "An employment gap longer than six months in the past two years: lenders typically want the return-to-work date plus about six months back on the job before counting the income at full strength.",
+      fixHorizon: "0-3 months",
+    });
+  }
+
+  // 6f. No qualifying income could be established (stress-500 batch-2): when
+  // the borrower has no traditional income and no alternative path produced a
+  // number, say what a lender would look at instead of showing a bare number.
+  if (
+    (i.grossMonthlyIncome ?? 0) <= 0 &&
+    (i.monthlyDepositsTotal ?? 0) <= 0 &&
+    !(i.expectedMonthlyRent != null && i.expectedMonthlyRent > 0) &&
+    (i.liquidAssetsTotal ?? 0) < 500000
+  ) {
+    obstacles.push({
+      rank: rank++, category: "income", severity: "primary",
+      description:
+        "No qualifying income could be established from what was shared. Some alternative-documentation lenders qualify on bank deposits, assets, or the rent a property produces — a licensed loan originator can identify which path fits your situation.",
+      fixHorizon: "0-3 months",
+    });
+  }
+
+  // 6g. (equity obstacles moved to position 0 above — they outrank everything
+  // for refinance scenarios.)
 
   // 7. Non-warrantable condo for government programs
   if (

@@ -38,8 +38,21 @@ export function calculateQualifyingIncome(i: EngineInputs): IncomeResult {
   }
 
   switch (i.incomeType) {
-    case IncomeType.W2:
-      return { monthly: gross, assumptions };
+    case IncomeType.W2: {
+      // Overtime/bonus (stress-500 P3): underwriters average variable pay over
+      // a two-year history with evidence it will continue — never counted
+      // dollar-for-dollar. A conservative 75% credit is disclosed.
+      let w2Gross = gross;
+      if (i.overtimeBonusMonthly != null && i.overtimeBonusMonthly > 0) {
+        w2Gross = gross + i.overtimeBonusMonthly * 0.75;
+        assumptions.push({
+          key: "overtime_bonus_income",
+          description:
+            "Overtime and bonus income was counted at a conservative 75% (variable pay is averaged over two years, not taken at face value).",
+        });
+      }
+      return { monthly: w2Gross, assumptions };
+    }
 
     case IncomeType.SELF_EMPLOYED: {
       if (i.selfEmployedNetIncome2yrAvg != null && i.selfEmployedNetIncome2yrAvg > 0) {

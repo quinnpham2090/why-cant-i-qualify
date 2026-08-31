@@ -159,12 +159,19 @@ export function determineNonQmPrograms(
         description: `Asset-based qualification was estimated by dividing your total liquid assets by ${divisor} months.`,
       });
     } else if (doc === IncomeDocumentation.BANK_STATEMENT_12 || doc === IncomeDocumentation.BANK_STATEMENT_24) {
-      // Bank statements typically credit 75-100% of deposits; use a conservative 75%.
-      qualifyingIncome = i.grossMonthlyIncome * 0.75;
+      // Bank-statement programs qualify on DEPOSITS, not tax-return income
+      // (stress-500 batch-2: the previous code credited 75% of the
+      // "gross monthly income" field, which a no-traditional-income borrower
+      // leaves at zero). Lenders typically credit 75-100% of documented
+      // deposits — the conservative 75% factor is disclosed.
+      const depositBase = i.monthlyDepositsTotal != null && i.monthlyDepositsTotal > 0
+        ? i.monthlyDepositsTotal
+        : i.grossMonthlyIncome;
+      qualifyingIncome = depositBase * 0.75;
       assumptions.push({
         key: "bank_statement_income",
         description:
-          "For bank-statement programs, lenders typically credit a portion of documented deposits. A conservative 75% of the amount you entered was used.",
+          "For bank-statement programs, qualification is based on documented deposits rather than tax-return income. A conservative 75% of the average monthly deposits you entered was used as qualifying income.",
       });
     } else if (doc === IncomeDocumentation.ONE_O_NINE_NINE || doc === IncomeDocumentation.PANDL_CPA || doc === IncomeDocumentation.PANDL_PREPARED) {
       // P&L/1099 programs credit ~90% of the documented figure. When the

@@ -131,9 +131,11 @@ export function determineEligiblePrograms(i: EngineInputs, credit: CreditProfile
   if (residencyAllowsAgency(residency, "fha") && warrantable && credit.waitingClear && i.propertyUse === PropertyUse.PRIMARY) {
     if (fico >= (PROGRAM_MIN_FICO.fha ?? 580)) {
       eligible.push(LoanType.FHA);
-      // FHA + DPA second (Catalog B1/C8): 3.5% covered by assistance when the
-      // borrower is first-time (most DPA programs) — Chenoa/HFA framing.
-      if (i.isFirstTimeBuyer === true && dpPct < 3.5) {
+      // FHA + DPA second (Catalog B1/C8): 3.5% covered by assistance —
+      // typically first-time buyers, but many HFA programs also serve
+      // non-first-timers; surfaced when the borrower asked for DPA too
+      // (stress-500 P3). County income/price limits verified by the MLO.
+      if ((i.isFirstTimeBuyer === true || i.isInterestedInDownPaymentAssistance === true) && dpPct < 3.5) {
         eligible.push(LoanType.DPA_ASSISTED_FHA);
       }
     }
@@ -145,10 +147,16 @@ export function determineEligiblePrograms(i: EngineInputs, credit: CreditProfile
     }
   }
 
-  // ---- VA (veteran status + residency) --------------------------------------
+  // ---- VA (veteran status + residency + occupancy) ---------------------------
+  // VA loans require the veteran to intend to occupy the home as their primary
+  // residence (38 U.S.C. §3710(a)(1); VA Lenders Handbook ch.3). A pure
+  // investment property is NOT eligible; a second home is generally NOT
+  // eligible either (limited exceptions like MPR-waivable rebuilds are
+  // lender/VA-case-specific, so they are not auto-approved here either).
   if (
     i.isVeteran === true &&
     i.loanType === LoanType.VA &&
+    i.propertyUse === PropertyUse.PRIMARY &&
     fico >= 620 &&
     credit.waitingClear &&
     residencyAllowsAgency(residency, "va")

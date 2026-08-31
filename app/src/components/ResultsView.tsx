@@ -223,6 +223,17 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
   };
   const isRefi =
     inputs.loanPurpose === LoanPurpose.REFI_RATE_TERM || inputs.loanPurpose === LoanPurpose.REFI_CASH_OUT;
+  // Underwater/CLTV (stress-500 P1): derived from the same inputs the engine
+  // used, so the banner can never disagree with the engine's gate.
+  const refiUnderwater =
+    isRefi &&
+    inputs.currentPayoffAmount != null &&
+    inputs.estimatedHomeValue != null &&
+    inputs.currentPayoffAmount > inputs.estimatedHomeValue;
+  const refiCltv =
+    isRefi && inputs.currentPayoffAmount != null && inputs.estimatedHomeValue
+      ? (inputs.currentPayoffAmount / inputs.estimatedHomeValue) * 100
+      : null;
   const pillarOrder = ["income", "debt", "credit", "cash", "payment", "property", "documentation"];
   const pillClass = TIER_BADGE[result.compositeTier] ?? "bg-paper-2 text-ink";
   // Stage 2 Phase 1: derive the split from the engine's own `isNonQm` so the
@@ -281,12 +292,26 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
           )}
           {result.secondaryObstacles.length > 0 && (
             <ul className="mt-3 space-y-2">
-              {result.secondaryObstacles.map((o) => (
-                <li key={`${o.category}-${o.description}`} className="rounded-lg bg-card p-3 text-sm text-ink-2">
+              {result.secondaryObstacles.map((o, idx) => (
+                <li key={`obs-${idx}-${o.category}-${o.description}`} className="rounded-lg bg-card p-3 text-sm text-ink-2">
                   {o.description}
                 </li>
               ))}
             </ul>
+          )}
+          {/* What information is missing (stress-500 results-messaging): the
+              confidence reasons double as "how to sharpen this estimate". */}
+          {result.confidence !== "high" && result.confidenceReasons.length > 0 && (
+            <div className="mt-4 border-t border-rule pt-3">
+              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-3">
+                To sharpen this estimate
+              </p>
+              <ul className="mt-2 space-y-1 text-xs text-ink-2">
+                {result.confidenceReasons.map((r, idx) => (
+                  <li key={`missing-${idx}`}>• {r}</li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
       )}
@@ -296,8 +321,8 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
         <div className="rounded-xl border border-rule bg-paper-2 p-6">
           <h3 className="text-base font-semibold text-ink">What is already working for you</h3>
           <ul className="mt-3 space-y-2">
-            {result.strengths.map((s) => (
-              <li key={`${s.category}-${s.description}`} className="flex items-start gap-2 rounded-lg bg-card p-3 text-sm text-ink">
+            {result.strengths.map((s, idx) => (
+              <li key={`str-${idx}-${s.category}-${s.description}`} className="flex items-start gap-2 rounded-lg bg-card p-3 text-sm text-ink">
                 <span className="mt-0.5 text-accent"><StrengthIcon className="h-4 w-4" /></span>
                 {s.description}
               </li>
@@ -306,13 +331,25 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
         </div>
       )}
 
-      {/* 4. Programs that may fit — agency + non-QM with explicit framing */}
-      {result.eligiblePrograms.length > 0 && result.eligiblePrograms[0] !== LoanType.UNKNOWN && (
+      {/* 4. Programs that may fit — agency + non-QM with explicit framing.
+              Suppressed for underwater refis: no listed program can finance it
+              and a chip list would contradict the equity message above. */}
+      {result.eligiblePrograms.length > 0 && result.eligiblePrograms[0] !== LoanType.UNKNOWN && !(isRefi && refiUnderwater) && (
         <div className="rounded-xl border border-rule bg-card p-6">
           <h3 className="text-base font-semibold text-ink">Programs that may fit your situation</h3>
-          {qmPrograms.length > 0 && (
+          {/* Closest-match chip (stress-500 P4): the recommendation is the
+              profile-based pick, not a generic list — with honest non-QM
+              framing when the match is an alternative-documentation program. */}
+          {result.recommendedProgram != null && result.recommendedProgram !== LoanType.UNKNOWN && (
+            <p className="mt-3 rounded-lg border border-rule bg-paper-2 p-3 text-sm text-ink">
+              {isNonQm(result.recommendedProgram)
+                ? `Closest potential path worth exploring: ${NON_QM_LABELS[result.recommendedProgram] ?? PROGRAM_LABELS[result.recommendedProgram] ?? result.recommendedProgram} — a specialized-lender product whose availability and terms vary by lender. This is a starting point to discuss, not a qualification.`
+                : `Closest match to start with: ${PROGRAM_LABELS[result.recommendedProgram] ?? result.recommendedProgram.replace(/_/g, " ")}. The loan officer confirms the final fit.`}
+            </p>
+          )}
+          {qmPrograms.filter((p) => p !== LoanType.NACA).length > 0 && (
             <ul className="mt-3 flex flex-wrap gap-2">
-              {qmPrograms.map((p) => (
+              {qmPrograms.filter((p) => p !== LoanType.NACA).map((p) => (
                 <li key={p} className="rounded-md border border-rule bg-card px-3 py-1.5 text-sm text-ink">
                   {PROGRAM_LABELS[p] ?? p.replace(/_/g, " ")}
                 </li>
@@ -337,10 +374,39 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
               </p>
             </div>
           )}
+          {/* NACA demoted from the headline list (stress-500 P4): it is a
+              counseling-based membership program, not a lender product — the
+              blanket placement previously made ~88% of results list it. */}
+          {qmPrograms.includes(LoanType.NACA) && (
+            <div className="mt-4">
+              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-3">
+                Counseling-based option
+              </p>
+              <p className="mt-2 text-sm text-ink-2">
+                NACA (via counseling) — a membership program with its own qualification process
+                (counseling and volunteer commitments; no traditional credit-score pricing). It
+                requires a longer process than a typical lender, and this tool cannot estimate it.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
-      
+      {/* 4b. Underwater refinance banner (stress-500 P1 C1) — the scenario that
+              must never read as a normal "Good fit". */}
+      {isRefi && refiUnderwater && (
+        <div className="rounded-xl border border-ink bg-paper-2 p-6">
+          <h3 className="text-base font-semibold text-ink">About your refinance</h3>
+          <p className="mt-2 text-sm text-ink">
+            The loan balance you entered is higher than your home&apos;s estimated value
+            {refiCltv != null ? ` (about ${Math.round(refiCltv)}% loan-to-value)` : ""}. Refinancing
+            in that position does not fit standard refinance programs, and alternative lenders
+            generally still require some equity — so this is not automatically solved by a
+            non-QM product. A licensed loan originator can walk through the options that do exist
+            (payoff negotiation, a modification with your current servicer, or rebuilding equity).
+          </p>
+        </div>
+      )}
       {/* 5. Headline numbers (2x2 Dashboard Grid). For a refinance the
              purchase-shaped max-loan / price ranges would be misleading, so
              they give way to the DTI cards (Stage 2 Phase 2). */}
@@ -510,8 +576,8 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
                 <p className="mt-2 text-xs text-ink-2">{s.summary}</p>
                 {s.redFlags.length > 0 && (
                   <ul className="mt-1 list-inside list-disc text-xs text-ink-2">
-                    {s.redFlags.map((f) => (
-                      <li key={f}>{f}</li>
+                    {s.redFlags.map((f, fi) => (
+                      <li key={`flag-${fi}-${f}`}>{f}</li>
                     ))}
                   </ul>
                 )}
@@ -528,8 +594,8 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
             How we calculated this (assumptions we made)
           </summary>
           <ul className="mt-3 list-inside list-disc space-y-1.5 text-sm text-ink-2">
-            {result.assumptionsUsed.map((a) => (
-              <li key={a.key}>{a.description}</li>
+            {result.assumptionsUsed.map((a, idx) => (
+              <li key={`assume-${idx}-${a.key}`}>{a.description}</li>
             ))}
           </ul>
         </details>
@@ -542,8 +608,8 @@ export function ResultsView({ result, inputs }: { result: DiagnosticResult; inpu
       >
         <h3 className="mb-2 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-3">Please read</h3>
         <ul className="space-y-1.5">
-          {[...RESULT_DISCLAIMER_BLOCK, ...result.disclaimers].map((d) => (
-            <li key={d}>• {d}</li>
+          {[...RESULT_DISCLAIMER_BLOCK, ...result.disclaimers].map((d, idx) => (
+            <li key={`disc-${idx}`}>• {d}</li>
           ))}
         </ul>
       </aside>

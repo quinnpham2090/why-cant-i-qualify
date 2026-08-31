@@ -13,6 +13,8 @@ import {
   CLOSING_COST_MID_PCT,
 } from "./tables";
 import {
+  CompositeTier,
+  IncomeDocumentation,
   LoanPurpose,
   LoanType,
   PropertyType,
@@ -95,7 +97,16 @@ function estimateTaxInsuranceHoa(i: EngineInputs, homeValue: number): TaxInsHoa 
     });
   }
 
-  const annualTax = homeValue * (ratePct / 100);
+  const annualTax =
+    i.propertyTaxMonthlyOverride != null && i.propertyTaxMonthlyOverride > 0
+      ? i.propertyTaxMonthlyOverride * 12
+      : homeValue * (ratePct / 100);
+  if (i.propertyTaxMonthlyOverride != null && i.propertyTaxMonthlyOverride > 0) {
+    assumptions.push({
+      key: "tax_rate_override",
+      description: "The monthly property-tax figure you provided was used instead of the state average.",
+    });
+  }
   let annualInsurance = HAZARD_INSURANCE_ANNUAL_DEFAULT;
   if (i.isInFloodZone) {
     annualInsurance += FLOOD_INSURANCE_ANNUAL_DEFAULT;
@@ -131,6 +142,41 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
       key: "phantom_down_payment",
       description:
         "You did not enter a down payment amount, so 3.5% (the FHA minimum) was assumed to produce a range. Enter your actual savings for a more accurate estimate.",
+    });
+  }
+
+  // Plausibility disclosures (stress-500 P4): unusual-but-valid inputs get a
+  // gentle "double-check" note instead of a block. Non-judgmental, never
+  // blocks progression.
+  if (
+    rawInputs.giftFundsAmount != null &&
+    rawInputs.giftFundsAmount > 0 &&
+    rawInputs.downPaymentAvailable > 0 &&
+    rawInputs.giftFundsAmount > rawInputs.downPaymentAvailable * 2
+  ) {
+    assumptions.push({
+      key: "gift_plausibility",
+      description:
+        "The gift amount entered is more than twice the down payment entered — you may want to double-check which figure is which.",
+    });
+  }
+  if ((rawInputs.liquidAssetsTotal ?? 0) > 10_000_000) {
+    assumptions.push({
+      key: "asset_plausibility",
+      description:
+        "Asset values this large are uncommon — the estimate assumes they are documented and available; program limits on how assets convert to qualifying income still apply.",
+    });
+  }
+  if (
+    rawInputs.monthlyHoaFee != null &&
+    rawInputs.monthlyHoaFee > 1000 &&
+    rawInputs.grossMonthlyIncome > 0 &&
+    rawInputs.monthlyHoaFee > rawInputs.grossMonthlyIncome * 0.15
+  ) {
+    assumptions.push({
+      key: "hoa_plausibility",
+      description:
+        "The monthly HOA fee entered is large relative to your income — it is included in the payment estimate, and it counts toward what lenders will qualify.",
     });
   }
 
@@ -176,6 +222,24 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
       description: "No target price was provided, so a representative price was used for the estimate.",
     });
   }
+
+  // Refinance CLTV signal (stress-500 P1): payoff vs value decides whether any
+  // standard refinance fits. Computed early so the tier gate and messaging can
+  // use it; the user-facing obstacle text lives in obstacles.ts.
+  const refiPayoff = i.currentPayoffAmount ?? null;
+  const refiValue = i.estimatedHomeValue ?? null;
+  const refiCltvPct =
+    isRefi && refiPayoff != null && refiValue != null && refiValue > 0
+      ? (refiPayoff / refiValue) * 100
+      : null;
+  const underwaterRefi = refiCltvPct != null && refiCltvPct > 100;
+  if (refiCltvPct != null) {
+    assumptions.push({
+      key: "refi_cltv",
+      description: `Your current loan balance is about ${Math.round(refiCltvPct)}% of your home's estimated value (loan-to-value). This ratio largely decides which refinance programs can apply.`,
+    });
+  }
+
   const tih = estimateTaxInsuranceHoa(i, price);
   assumptions.push(...tih.assumptions);
 
@@ -278,15 +342,29 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
   // nonQmAssumedRate was dead code and non-QM PITI/ranges were priced as if
   // the loan were agency-eligible (Stage 2 Phase 1).
   const nonQmRow = isNonQm(program) ? nonQmProgramFor(program) : null;
-  const rate = nonQmRow
+  const computedRate = nonQmRow
     ? nonQmAssumedRate(nonQmRow, credit.fico)
     : assumedRate(priceProgramForPiti, credit.fico, ltvPct, TERM_YEARS);
-  assumptions.push({
-    key: "assumed_rate",
-    description: nonQmRow
-      ? `An illustrative interest rate of ${rate.toFixed(2)}% was assumed, including the typical pricing premium for this alternative-documentation program. Your actual rate depends on your credit profile, the property, and the lender.`
-      : `An illustrative interest rate of ${rate.toFixed(2)}% was assumed. Your actual rate depends on your credit profile, the property, and the lender.`,
-  });
+  // Rate override (stress-500 P3): when the borrower has a real quoted rate,
+  // run the math at it — clearly labeled as their number, not our assumption.
+  const rateOverride =
+    i.assumedRateOverridePct != null && i.assumedRateOverridePct > 0 && i.assumedRateOverridePct < 25
+      ? i.assumedRateOverridePct
+      : null;
+  const rate = rateOverride ?? computedRate;
+  assumptions.push(
+    rateOverride != null
+      ? {
+          key: "assumed_rate",
+          description: `The rate you provided (${rateOverride.toFixed(3)}%) was used. Your final rate depends on the full quote, points, and lock terms.`,
+        }
+      : {
+          key: "assumed_rate",
+          description: nonQmRow
+            ? `An illustrative interest rate of ${rate.toFixed(2)}% was assumed, including the typical pricing premium for this alternative-documentation program. Your actual rate depends on your credit profile, the property, and the lender.`
+            : `An illustrative interest rate of ${rate.toFixed(2)}% was assumed. Your actual rate depends on your credit profile, the property, and the lender.`,
+        },
+  );
 
   const annualMI = mortgageInsuranceAnnual(priceProgramForPiti, L, ltvPct, credit.fico);
   if (annualMI > 0) {
@@ -393,10 +471,40 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
         "The Section 184 one-time HUD loan fee (1.5% of the loan amount) was included in the estimated cash to close.",
     });
   }
+  // VA one-time funding fee (stress-500 P5): 2.15% first-use, 0-down is the
+  // common tier; typically financed rather than paid in cash, so it is
+  // disclosed (not added to cash) and noted as waivable for qualifying
+  // service-connected disabilities — the tool never assumes exemption.
+  if (program === LoanType.VA) {
+    assumptions.push({
+      key: "va_funding_fee",
+      description:
+        "VA loans carry a one-time funding fee (commonly 1.25%–3.3% of the loan by down payment and first/subsequent use), usually financed into the loan. It is waived for veterans with qualifying service-connected disabilities — ask the lender.",
+    });
+  }
+  if (program === LoanType.FHA) {
+    assumptions.push({
+      key: "fha_ufmip",
+      description:
+        "FHA also adds a one-time upfront mortgage insurance premium of 1.75% of the loan amount, which is almost always financed into the loan rather than paid in cash.",
+    });
+  }
+  // Seller credit (stress-500 P3): seller-paid closing costs reduce cash to
+  // close, capped by program interest-credit limits (3–9% by program/down —
+  // the cap check is the MLO's job; the raw subtraction is disclosed).
+  const sellerCredit = i.sellerCreditAmount ?? 0;
+  if (sellerCredit > 0) {
+    assumptions.push({
+      key: "seller_credit",
+      description:
+        "The seller-paid credit you entered was subtracted from the estimated cash to close. Programs cap how much a seller may contribute (roughly 3–9% of the price depending on program and down payment) — the loan officer confirms your exact limit.",
+    });
+  }
+  const netCtc = (v: number) => Math.max(0, v - sellerCredit);
   const cashToClose: Range = {
-    low: roundDollars(ctc.low + section184Fee, 500),
-    mid: roundDollars(ctc.mid + section184Fee, 500),
-    high: roundDollars(ctc.high + section184Fee, 500),
+    low: roundDollars(netCtc(ctc.low) + section184Fee, 500),
+    mid: roundDollars(netCtc(ctc.mid) + section184Fee, 500),
+    high: roundDollars(netCtc(ctc.high) + section184Fee, 500),
   };
 
   // 10. Sub-scores
@@ -479,17 +587,118 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
   // 11. Composite
   const composite = computeComposite(subScores);
 
+  // 11b. Hard safety gates (stress-500 P1): the weighted composite alone
+  // floors around "Good fit" for extreme profiles (300 FICO + strong income
+  // still averaged well). Genuinely impaired profiles must reach the lowest
+  // tier regardless of how healthy the other pillars are. Each gate is a
+  // categorical underwriting wall, not a tuned score — disclosed via the
+  // gate's message and the matching obstacle.
+  const noRatioEscape =
+    effectivePrograms.includes(LoanType.DSCR) || effectivePrograms.includes(LoanType.ASSET_QUALIFIER);
+  let gated: { score: number; tier: CompositeTier; message: string } | null = null;
+  if (underwaterRefi) {
+    gated = {
+      score: Math.min(composite.score, 35),
+      tier: CompositeTier.LIMITED_FIT,
+      message:
+        "Because the loan balance is higher than the home's estimated value, standard refinance programs generally do not apply to this scenario. The breakdown below explains why — and where a conversation with a licensed originator may still lead.",
+    };
+  } else if (credit.fico < 500) {
+    gated = {
+      score: Math.min(composite.score, 35),
+      tier: CompositeTier.LIMITED_FIT,
+      message:
+        "Based on what you shared, credit improvement is likely required before most loan programs will consider the application. That is a starting point, not a verdict — the breakdown below shows where the file is strongest and the fastest levers to pull.",
+    };
+  } else if (dtiBackEnd > 0.65 && !noRatioEscape) {
+    gated = {
+      score: Math.min(composite.score, 39),
+      tier: CompositeTier.LIMITED_FIT,
+      message:
+        "The combined monthly obligations you shared are far above what lenders typically qualify. The breakdown below shows which debts move the number most — and a co-borrower, debt paydown, or a lower target price each change it.",
+    };
+  } else if (qualifyingIncome <= 0 && nonQm.length === 0) {
+    gated = {
+      score: Math.min(composite.score, 35),
+      tier: CompositeTier.LIMITED_FIT,
+      message:
+        "There was not enough income information to estimate a qualification path. Alternative-documentation programs may still fit — the sections below explain what a lender would look at next.",
+    };
+  }
+  const finalComposite = gated ?? composite;
+
   // 12. Obstacles + strengths
   const { primary, secondary, strengths } = identifyObstacles(i, subScores, credit, effectivePrograms, reservesMonths);
 
   // 14. Recommended program
-  const recommendedProgram = recommendProgram(effectivePrograms, i);
+  // Alt-doc headline fix (stress-500 batch-2 F2): when the file is an
+  // alternative-documentation profile (or the borrower has no traditional
+  // income), the closest-matching NON-QM program leads instead of an agency
+  // program the borrower's documentation could not actually support. Framing
+  // stays "worth exploring" — never "you qualify".
+  let recommendedProgram = recommendProgram(effectivePrograms, i);
+  const nonQmTypes = effectivePrograms.filter((p) => isNonQm(p));
+  const altDocDocs: IncomeDocumentation[] = [
+    IncomeDocumentation.BANK_STATEMENT_12,
+    IncomeDocumentation.BANK_STATEMENT_24,
+    IncomeDocumentation.ASSET_DEPLETION,
+    IncomeDocumentation.DSCR_RENT,
+    IncomeDocumentation.NO_DOC,
+    IncomeDocumentation.CASH_UNDOCUMENTED,
+  ];
+  const isAltDocFile = (i.incomeDocumentation != null && altDocDocs.includes(i.incomeDocumentation)) || i.grossMonthlyIncome <= 0;
+  if (nonQmTypes.length > 0 && isAltDocFile) {
+    const nonQmRecommended = nonQmTypes.includes(LoanType.DSCR)
+      ? LoanType.DSCR
+      : nonQmTypes.includes(LoanType.ASSET_QUALIFIER)
+        ? LoanType.ASSET_QUALIFIER
+        : nonQmTypes[0];
+    recommendedProgram = nonQmRecommended;
+  }
 
   // 15. Disclaimers (non-QM variance disclosed whenever a non-QM program is surfaced)
   const disclaimers = buildDisclaimers({
     ...i,
     loanType: effectivePrograms.some((p) => isNonQm(p)) ? LoanType.BANK_STATEMENT : i.loanType,
   });
+
+  // Guidance disclosures (stress-500 P4/P5): program-structure notes the
+  // borrower can act on. These are educational notes, not qualification claims.
+  if (annualMI > 0 && priceProgramForPiti === LoanType.CONVENTIONAL_CONF) {
+    assumptions.push({
+      key: "pmi_removal_note",
+      description:
+        "On conventional loans, mortgage insurance can typically be requested off once the loan balance reaches 80% of the home's value (and automatically ends at 78%) — unlike FHA insurance, which usually lasts the life of the loan.",
+    });
+  }
+  if (effectivePrograms.includes(LoanType.USDA)) {
+    assumptions.push({
+      key: "usda_area_note",
+      description:
+        "USDA eligibility depends on the property's location (eligible rural areas) and household income limits for the county — the USDA's online map and your loan officer can confirm the address.",
+    });
+  }
+  if (i.prefersInterestOnly) {
+    assumptions.push({
+      key: "interest_only_note",
+      description:
+        "Interest-only structures (a lower payment for the first years, with principal repaid later) exist mainly among jumbo and non-QM products, with rate and equity requirements that vary by lender — worth raising with the loan officer rather than a standard feature.",
+    });
+  }
+  if (i.vaEntitlement === "partial") {
+    assumptions.push({
+      key: "va_entitlement_partial",
+      description:
+        "With partial (or previously used) VA entitlement, loans above your county's conforming limit typically require a down payment on the portion above the limit — the lender checks your Certificate of Eligibility.",
+    });
+  }
+
+  // Deduplicate disclosed assumptions by key (stress-500 P1 fix companion):
+  // several non-QM programs push the same assumption key with identical
+  // framing, which previously produced duplicate React keys in the UI list.
+  const assumptionsUsed: Assumption[] = assumptions.filter(
+    (a, idx) => assumptions.findIndex((x) => x.key === a.key) === idx,
+  );
 
   return {
     qualifyingIncome,
@@ -503,9 +712,9 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
     pitiBreakdown,
     reservesMonths: reservesMonths != null && Number.isFinite(reservesMonths) ? reservesMonths : null,
     subScores,
-    compositeScore: composite.score,
-    compositeTier: composite.tier,
-    compositeTierMessage: composite.message,
+    compositeScore: finalComposite.score,
+    compositeTier: finalComposite.tier,
+    compositeTierMessage: finalComposite.message,
     primaryObstacle: primary,
     secondaryObstacles: secondary,
     strengths,
@@ -514,7 +723,7 @@ export function runDiagnostic(rawInputs: EngineInputs): DiagnosticResult {
     confidence,
     confidenceReasons: reasons,
     disclaimers,
-    assumptionsUsed: assumptions,
+    assumptionsUsed,
     engineVersion: ENGINE_VERSION,
   };
 }

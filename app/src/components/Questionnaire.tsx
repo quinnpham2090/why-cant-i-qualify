@@ -204,9 +204,27 @@ export function Questionnaire() {
   const [payoff, setPayoff] = useState<string>("");
   // Stage 2 Phase 2: save/resume
   const [resumeSnapshot, setResumeSnapshot] = useState<SavedSnapshot | null>(null);
+  // Stress-500 P2/P3: no-traditional-income path (DSCR / bank statement /
+  // asset depletion), plus the highest-value missing conditional inputs.
+  const [hasTraditionalIncome, setHasTraditionalIncome] = useState<"yes" | "no">("yes");
+  const [altIncomePath, setAltIncomePath] = useState<"unsure" | "dscr" | "bank_statement" | "asset_depletion">("unsure");
+  const [monthlyDeposits, setMonthlyDeposits] = useState<string>("");
+  const [hasOvertimeBonus, setHasOvertimeBonus] = useState<"no" | "yes">("no");
+  const [overtimeBonusAmount, setOvertimeBonusAmount] = useState<string>("");
+  const [hasEmploymentGap, setHasEmploymentGap] = useState<"unsure" | "no" | "yes">("unsure");
+  const [sellerCreditChoice, setSellerCreditChoice] = useState<"no" | "yes">("no");
+  const [sellerCredit, setSellerCredit] = useState<string>("");
+  const [interestedDpa, setInterestedDpa] = useState<"unsure" | "yes" | "no">("unsure");
+  const [prefersIo, setPrefersIo] = useState<"no" | "yes">("no");
+  const [rateOverride, setRateOverride] = useState<string>("");
+  const [vaEntitlement, setVaEntitlement] = useState<"unsure" | "full" | "partial">("unsure");
+  const [taxMonthly, setTaxMonthly] = useState<string>("");
 
   const num = (s: string) => {
-    const n = Number(s);
+    // Comma-formatted numbers ("350,000") and stray "$" are accepted
+    // (stress-500 P4: thousand separators previously blocked the Goal step).
+    const cleaned = s.replace(/[$,\s]/g, "");
+    const n = Number(cleaned);
     return Number.isFinite(n) && n > 0 ? n : 0;
   };
 
@@ -226,6 +244,9 @@ export function Questionnaire() {
     largeDepositTotal, condoLitigation, condoInvestorHigh, condoDelinquency,
     mfdLeasedLand, mfdSingleWide, mfdPre1976, mfdFoundation,
     stateCode, timeline, homeValue, payoff,
+    hasTraditionalIncome, altIncomePath, monthlyDeposits, hasOvertimeBonus,
+    overtimeBonusAmount, hasEmploymentGap, sellerCreditChoice, sellerCredit,
+    interestedDpa, prefersIo, rateOverride, vaEntitlement, taxMonthly,
   });
 
   // Funnel analytics (P10): start fires once per mount; no input values are sent.
@@ -332,6 +353,19 @@ export function Questionnaire() {
     setTimeline(str("timeline", ""));
     setHomeValue(str("homeValue", ""));
     setPayoff(str("payoff", ""));
+    setHasTraditionalIncome(pick("hasTraditionalIncome", ["yes", "no"] as const, "yes"));
+    setAltIncomePath(pick("altIncomePath", ["unsure", "dscr", "bank_statement", "asset_depletion"] as const, "unsure"));
+    setMonthlyDeposits(str("monthlyDeposits", ""));
+    setHasOvertimeBonus(pick("hasOvertimeBonus", ["no", "yes"] as const, "no"));
+    setOvertimeBonusAmount(str("overtimeBonusAmount", ""));
+    setHasEmploymentGap(pick("hasEmploymentGap", ["unsure", "no", "yes"] as const, "unsure"));
+    setSellerCreditChoice(pick("sellerCreditChoice", ["no", "yes"] as const, "no"));
+    setSellerCredit(str("sellerCredit", ""));
+    setInterestedDpa(pick("interestedDpa", ["unsure", "yes", "no"] as const, "unsure"));
+    setPrefersIo(pick("prefersIo", ["no", "yes"] as const, "no"));
+    setRateOverride(str("rateOverride", ""));
+    setVaEntitlement(pick("vaEntitlement", ["unsure", "full", "partial"] as const, "unsure"));
+    setTaxMonthly(str("taxMonthly", ""));
     setResumeSnapshot(null);
     goToStep(Math.min(Math.max(saved.step, 0), STEP_NAMES.length - 1));
   };
@@ -354,7 +388,7 @@ export function Questionnaire() {
 
   /** Permissive decimal parse (0.5-year increments for credit events). */
   const decimal = (s: string): number | null => {
-    const n = Number(s);
+    const n = Number(s.replace(/[$,\s]/g, ""));
     return s.trim() !== "" && Number.isFinite(n) && n >= 0 ? n : null;
   };
 
@@ -400,6 +434,13 @@ export function Questionnaire() {
     cosignedPayment,
     revolvingBalance,
     revolvingLimit,
+    hasTraditionalIncome,
+    altIncomePath,
+    monthlyDeposits,
+    overtimeBonusAmount,
+    sellerCredit,
+    rateOverride,
+    taxMonthly,
   });
 
   /**
@@ -509,6 +550,27 @@ export function Questionnaire() {
           }
         : undefined;
 
+    // Stress-500 P2: the no-traditional-income branch maps to the engine's
+    // alternative-documentation paths. Deposits drive bank-statement
+    // qualification (NOT ordinary income); rent drives DSCR; total assets
+    // (step 6) drive asset-depletion. The engine discloses each conversion.
+    const traditional = hasTraditionalIncome === "yes";
+    const altDocForPath: Record<typeof altIncomePath, IncomeDocumentation | undefined> = {
+      unsure: undefined,
+      dscr: IncomeDocumentation.DSCR_RENT,
+      bank_statement: IncomeDocumentation.BANK_STATEMENT_24,
+      asset_depletion: IncomeDocumentation.ASSET_DEPLETION,
+    };
+    const effectiveIncome = traditional
+      ? num(income)
+      : altIncomePath === "bank_statement"
+        ? num(monthlyDeposits) // deposits are the qualifying base (75% factor disclosed by the engine)
+        : 0;
+    const effectiveIncomeDoc =
+      !traditional && altDocForPath[altIncomePath] != null
+        ? altDocForPath[altIncomePath]!
+        : incomeDoc;
+
     const inputs: EngineInputs = {
       loanPurpose,
       propertyUse,
@@ -518,9 +580,13 @@ export function Questionnaire() {
       isVeteran: isVeteran === "yes",
       isMedicalProfessional: isMedicalProfessional === "yes",
       incomeAtOrBelow80Ami: incomeAtOrBelow80Ami === "yes" ? true : incomeAtOrBelow80Ami === "no" ? false : undefined,
-      grossMonthlyIncome: num(income),
-      incomeType,
-      incomeDocumentation: incomeDoc,
+      grossMonthlyIncome: effectiveIncome,
+      incomeType: !traditional
+        ? altIncomePath === "asset_depletion"
+          ? IncomeType.UNKNOWN
+          : IncomeType.SELF_EMPLOYED
+        : incomeType,
+      incomeDocumentation: effectiveIncomeDoc,
       // Stress-test P1: declining income uses the recent level, not the average
       incomeTrend,
       sideBusinessNetMonthlyIncome:
@@ -528,7 +594,30 @@ export function Questionnaire() {
           ? Number(sideBusinessNet)
           : null,
       cashIncomePortionPct: hasCashIncome === "yes" ? (num(cashPortion) || 100) : 0,
-      expectedMonthlyRent: propertyUse === PropertyUse.INVESTMENT && monthlyRent ? num(monthlyRent) : null,
+      // Rental/property income feeds DSCR and investor programs — collected
+      // for investment properties AND owner-occupied 2-4 unit house-hacks
+      // (stress-500 P3), plus the dedicated DSCR alternative path.
+      expectedMonthlyRent:
+        (propertyUse === PropertyUse.INVESTMENT ||
+          propertyType === PropertyType.MULTI_2_4 ||
+          (!traditional && altIncomePath === "dscr")) && monthlyRent
+          ? num(monthlyRent)
+          : null,
+      monthlyDepositsTotal:
+        !traditional && altIncomePath === "bank_statement" && monthlyDeposits
+          ? num(monthlyDeposits)
+          : null,
+      sellerCreditAmount: sellerCredit.trim() !== "" ? num(sellerCredit) : null,
+      isInterestedInDownPaymentAssistance: interestedDpa === "yes",
+      prefersInterestOnly: prefersIo === "yes",
+      assumedRateOverridePct: rateOverride.trim() !== "" ? num(rateOverride) || null : null,
+      vaEntitlement: isVeteran === "yes" ? vaEntitlement : undefined,
+      employmentGap6mo: hasEmploymentGap === "yes",
+      propertyTaxMonthlyOverride: taxMonthly.trim() !== "" ? num(taxMonthly) || null : null,
+      overtimeBonusMonthly:
+        traditional && incomeType === IncomeType.W2 && hasOvertimeBonus === "yes"
+          ? num(overtimeBonusAmount)
+          : null,
       liquidAssetsTotal: totalAssets ? num(totalAssets) : null,
       creditScoreSelfReported: knowsScore === "yes" ? num(creditScore) : null,
       creditTierSelfReported: knowsScore === "no" ? creditTier : null,
@@ -589,7 +678,7 @@ export function Questionnaire() {
       state: stateCode, // V1 geofenced to Florida (see the Goal-step selector)
     };
     // Auto-select documentation type when cash income is reported
-    if (hasCashIncome === "yes" && incomeDoc === IncomeDocumentation.UNKNOWN) {
+    if (traditional && hasCashIncome === "yes" && effectiveIncomeDoc === IncomeDocumentation.UNKNOWN) {
       inputs.incomeDocumentation = IncomeDocumentation.CASH_UNDOCUMENTED;
     }
     setResult(runDiagnostic(inputs));
@@ -634,7 +723,9 @@ export function Questionnaire() {
       {resumeSnapshot && (
         <div role="status" className="flex flex-col gap-3 rounded-xl border border-rule bg-accent-soft p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-ink">
-            You have a saved check in progress. Continue where you left off?
+            You have a saved check in progress (step {Math.min(resumeSnapshot.step + 1, STEP_NAMES.length)} of{" "}
+            {STEP_NAMES.length}: {STEP_NAMES[Math.min(resumeSnapshot.step, STEP_NAMES.length - 1)]}). Continue where
+            you left off?
           </p>
           <div className="flex shrink-0 gap-2">
             <button
@@ -807,13 +898,21 @@ export function Questionnaire() {
             <Field id="q-residency" label="What is your residency or immigration status?" help="This determines which loan programs you can use — for example FHA is limited to citizens and permanent residents. Nothing is shared with anyone.">
               <ChoiceGroup id="q-residency" value={residencyStatus} onChange={setResidencyStatus} options={[{ value: ResidencyStatus.US_CITIZEN, label: "U.S. citizen" }, { value: ResidencyStatus.PERMANENT_RESIDENT, label: "Permanent resident (green card)" }, { value: ResidencyStatus.NON_PERMANENT_EAD, label: "Work visa / permit" }, { value: ResidencyStatus.NON_PERMANENT_NO_EAD, label: "Visa without work authorization" }, { value: ResidencyStatus.ITIN, label: "ITIN filer (no SSN)" }, { value: ResidencyStatus.FOREIGN_NATIONAL, label: "Foreign national" }, { value: ResidencyStatus.UNKNOWN, label: "Prefer not to say" }]} />
             </Field>
-            {residencyStatus !== ResidencyStatus.US_CITIZEN && residencyStatus !== ResidencyStatus.UNKNOWN && (
-              <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l border-rule pl-5 ml-1">
-                <Field id="q-veteran" label="Have you served in the U.S. military? (veterans and surviving spouses)" help="VA loans are earned through military service, regardless of citizenship status.">
-                  <ChoiceGroup id="q-veteran" value={isVeteran} onChange={setIsVeteran} options={[{ value: "unsure", label: "Prefer not to say" }, { value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
-                </Field>
-              </div>
-            )}
+            {/* Military service — asked of EVERYONE (stress-500 P3): a citizen
+                veteran was previously never asked, so real veterans selecting
+                VA got told Conventional/Jumbo instead. */}
+            <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l border-rule pl-5 ml-1">
+              <Field id="q-veteran" label="Have you served in the U.S. military? (veterans, active duty, and surviving spouses)" help="VA loans are earned through military service, regardless of citizenship status.">
+                <ChoiceGroup id="q-veteran" value={isVeteran} onChange={setIsVeteran} options={[{ value: "unsure", label: "Prefer not to say" }, { value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
+              </Field>
+              {isVeteran === "yes" && (
+                <div className="mt-4">
+                  <Field id="q-va-entitlement" label="Do you know your VA entitlement status?" help="If you've used a VA loan before, or are paying one off now, your remaining entitlement can change what's possible — the lender checks your Certificate of Eligibility.">
+                    <ChoiceGroup id="q-va-entitlement" value={vaEntitlement} onChange={setVaEntitlement} options={[{ value: "unsure", label: "Not sure" }, { value: "full", label: "Full (first VA use / entitlement restored)" }, { value: "partial", label: "Partial (used a VA loan before)" }]} />
+                  </Field>
+                </div>
+              )}
+            </div>
             {(residencyStatus === ResidencyStatus.US_CITIZEN || residencyStatus === ResidencyStatus.PERMANENT_RESIDENT || residencyStatus === ResidencyStatus.NON_PERMANENT_EAD) && (
               <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l border-rule pl-5 ml-1">
                 <Field id="q-tribal" label="Are you an enrolled member of a federally recognized tribe?" help="Section 184 loans offer low down payments for tribal members, on or off tribal land.">
@@ -826,6 +925,12 @@ export function Questionnaire() {
             </Field>
             <Field id="q-ami" label="Is your total household income at or below the area average for your county?" help="Some 3%-down programs are reserved for moderate incomes. Not sure is fine — the loan officer can confirm.">
               <ChoiceGroup id="q-ami" value={incomeAtOrBelow80Ami} onChange={setIncomeAtOrBelow80Ami} options={[{ value: "unsure", label: "Not sure" }, { value: "yes", label: "Yes, at or below" }, { value: "no", label: "No, above it" }]} />
+            </Field>
+            <Field id="q-io" label="Would a lower, interest-only payment for the first years interest you?" help="Interest-only structures exist mainly among jumbo and specialized products — we'll note it for the loan officer.">
+              <ChoiceGroup id="q-io" value={prefersIo} onChange={setPrefersIo} options={[{ value: "no", label: "No, standard payments" }, { value: "yes", label: "Yes, worth exploring" }]} />
+            </Field>
+            <Field id="q-rate-override" error={errors.rateOverride} label="Do you have a quoted rate to run the numbers at? (optional)" help="Leave blank and we'll use a representative market rate — clearly disclosed.">
+              <input id="q-rate-override" className={inputCls} inputMode="decimal" maxLength={6} placeholder="e.g. 6.875" value={rateOverride} aria-invalid={errors.rateOverride ? true : undefined} aria-describedby={errors.rateOverride ? "q-rate-override-error" : undefined} onChange={(e) => setRateOverride(e.target.value)} />
             </Field>
           </div>
         </fieldset>
@@ -845,6 +950,9 @@ export function Questionnaire() {
             <Field id="q-probationary" label="Are you still in a probationary or introductory period at work?" help="Many lenders wait until it ends — or look for a strong history in the same field — before counting the income.">
               <ChoiceGroup id="q-probationary" value={isProbationary} onChange={setIsProbationary} options={[{ value: "unsure", label: "Not sure" }, { value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
             </Field>
+            <Field id="q-employment-gap" label="Any employment gaps longer than 6 months in the last two years? (optional)" help="A gap isn't a deal-breaker — lenders usually just want the return-to-work story documented.">
+              <ChoiceGroup id="q-employment-gap" value={hasEmploymentGap} onChange={setHasEmploymentGap} options={[{ value: "unsure", label: "Not sure" }, { value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
+            </Field>
           </div>
         </fieldset>
       )}
@@ -854,10 +962,59 @@ export function Questionnaire() {
           <legend className="px-2 font-display text-2xl text-ink">Your income</legend>
           <p className="mb-6 text-sm text-ink-2">{STEP_INTROS.income}</p>
           <div className="flex flex-col gap-6">
-            <Field id="q-income" label="Gross monthly income (before taxes)" error={errors.income}>
-              <input id="q-income" className={inputCls} inputMode="numeric" maxLength={12} placeholder="e.g. 6000" value={income} aria-invalid={errors.income ? true : undefined} aria-describedby={errors.income ? "q-income-error" : undefined} onChange={(e) => setIncome(e.target.value)} required />
+            {/* No-traditional-income branch (stress-500 P2): the DSCR /
+                bank-statement / asset-depletion paths. Standard borrowers
+                (default "Yes") see the exact same form as before. */}
+            <Field id="q-traditional-income" label="Do you have traditional income you'll document (W-2 pay, self-employment, retirement, benefits)?" help="Choose “No” and we'll match you with lenders that qualify on deposits, assets, or property cash flow instead.">
+              <ChoiceGroup id="q-traditional-income" value={hasTraditionalIncome} onChange={setHasTraditionalIncome} options={[{ value: "yes", label: "Yes, I have income to document" }, { value: "no", label: "No traditional income" }]} />
             </Field>
-            <Field id="q-income-type" label="Income type">
+            {hasTraditionalIncome === "yes" ? (
+              <>
+                <Field id="q-income" label="Gross monthly income (before taxes)" error={errors.income}>
+                  <input id="q-income" className={inputCls} inputMode="numeric" maxLength={12} placeholder="e.g. 6000 or 6,000" value={income} aria-invalid={errors.income ? true : undefined} aria-describedby={errors.income ? "q-income-error" : undefined} onChange={(e) => setIncome(e.target.value)} required />
+                </Field>
+                {incomeType === IncomeType.W2 && (
+                  <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l border-rule pl-5 ml-1">
+                    <Field id="q-overtime" label="Do you earn overtime or bonus you want counted? (optional)" help="Variable pay is averaged, not taken at face value — we count it conservatively.">
+                      <ChoiceGroup id="q-overtime" value={hasOvertimeBonus} onChange={setHasOvertimeBonus} options={[{ value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
+                    </Field>
+                    {hasOvertimeBonus === "yes" && (
+                      <div className="mt-4">
+                        <Field id="q-overtime-amount" label="Combined overtime + bonus per month (before taxes)" error={errors.overtimeBonusAmount}>
+                          <input id="q-overtime-amount" className={inputCls} inputMode="numeric" maxLength={9} placeholder="e.g. 800" value={overtimeBonusAmount} aria-invalid={errors.overtimeBonusAmount ? true : undefined} aria-describedby={errors.overtimeBonusAmount ? "q-overtime-amount-error" : undefined} onChange={(e) => setOvertimeBonusAmount(e.target.value)} />
+                        </Field>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <Field id="q-alt-path" label="How could you show you can repay the loan?" help="You'll see honest results either way — the choice just points the math at the right kind of program.">
+                  <ChoiceGroup id="q-alt-path" value={altIncomePath} onChange={setAltIncomePath} options={[{ value: "unsure", label: "Not sure — show me what may fit" }, { value: "dscr", label: "Rent from a property (DSCR)" }, { value: "bank_statement", label: "Bank deposits (12–24 months of statements)" }, { value: "asset_depletion", label: "Savings & investments (asset-based)" }]} />
+                </Field>
+                {altIncomePath === "dscr" && (
+                  <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l border-rule pl-5 ml-1">
+                    <Field id="q-alt-rent" error={errors.monthlyRent} label="Monthly rent the property earns (or you expect it to earn)" help="Investor cash-flow programs qualify on the rent covering the payment — not your personal income. Programs typically ask for 20–25% down.">
+                      <input id="q-alt-rent" className={inputCls} inputMode="numeric" maxLength={9} placeholder="e.g. 2400" value={monthlyRent} aria-invalid={errors.monthlyRent ? true : undefined} aria-describedby={errors.monthlyRent ? "q-alt-rent-error" : undefined} onChange={(e) => setMonthlyRent(e.target.value)} />
+                    </Field>
+                  </div>
+                )}
+                {altIncomePath === "bank_statement" && (
+                  <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l border-rule pl-5 ml-1">
+                    <Field id="q-deposits" error={errors.monthlyDeposits} label="Average monthly deposits (business or personal)" help="Bank-statement lenders qualify you on deposits — typically crediting a conservative portion of them, not the full amount.">
+                      <input id="q-deposits" className={inputCls} inputMode="numeric" maxLength={10} placeholder="e.g. 18000" value={monthlyDeposits} aria-invalid={errors.monthlyDeposits ? true : undefined} aria-describedby={errors.monthlyDeposits ? "q-deposits-error" : undefined} onChange={(e) => setMonthlyDeposits(e.target.value)} />
+                    </Field>
+                  </div>
+                )}
+                {altIncomePath === "asset_depletion" && (
+                  <p className="rounded-lg border border-rule bg-paper-2 p-3 text-sm text-ink-2">
+                    Asset-based programs typically divide qualifying assets over a fixed period (for example 84 months) and usually ask for 30%+ down with strong credit — enter your total savings &amp; investments on the savings step, and we&apos;ll use that.
+                  </p>
+                )}
+              </>
+            )}
+            <Field id="q-income-type" label="Income type" help={hasTraditionalIncome === "no" ? "Pick the closest match — alternative-documentation lenders read your deposits, rent, or assets instead of this number." : undefined}>
               <ChoiceGroup id="q-income-type" value={incomeType} onChange={setIncomeType} options={[{ value: IncomeType.W2, label: "W-2 employee" }, { value: IncomeType.SELF_EMPLOYED, label: "Self-employed" }, { value: IncomeType.COMMISSION, label: "Commission-based" }, { value: IncomeType.VARIABLE_HOURLY, label: "Variable / hourly" }, { value: IncomeType.RETIRED_FIXED, label: "Retirement income" }, { value: IncomeType.SOCIAL_SECURITY, label: "Social Security" }]} />
             </Field>
             <Field id="q-income-doc" label="How is your income documented?" help="Lenders accept many documentation types — not just tax returns.">
@@ -970,6 +1127,9 @@ export function Questionnaire() {
             <Field id="q-hoa" error={errors.hoaFee} label="Monthly HOA fee (optional)" help="Condos and many planned communities charge one. Leave blank if none.">
               <input id="q-hoa" className={inputCls} inputMode="numeric" maxLength={7} placeholder="e.g. 250" value={hoaFee} aria-invalid={errors.hoaFee ? true : undefined} aria-describedby={errors.hoaFee ? "q-hoa-error" : undefined} onChange={(e) => setHoaFee(e.target.value)} />
             </Field>
+            <Field id="q-tax-monthly" error={errors.taxMonthly} label="Monthly property taxes, if you know them (optional)" help="Leave blank and we'll estimate from your state's average rate.">
+              <input id="q-tax-monthly" className={inputCls} inputMode="numeric" maxLength={7} placeholder="e.g. 310" value={taxMonthly} aria-invalid={errors.taxMonthly ? true : undefined} aria-describedby={errors.taxMonthly ? "q-tax-monthly-error" : undefined} onChange={(e) => setTaxMonthly(e.target.value)} />
+            </Field>
             <Field id="q-flood" label="Is the home in a flood zone? (optional)" help="Not sure is fine — flood insurance, where required, raises the monthly payment.">
               <ChoiceGroup id="q-flood" value={floodZone} onChange={setFloodZone} options={[{ value: "unsure", label: "Not sure" }, { value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
             </Field>
@@ -1032,7 +1192,20 @@ export function Questionnaire() {
             <Field id="q-first-time" label="Is this your first home? (optional)">
               <ChoiceGroup id="q-first-time" value={isFirstTimeBuyer} onChange={setIsFirstTimeBuyer} options={[{ value: "unsure", label: "Prefer not to say" }, { value: "yes", label: "Yes" }, { value: "no", label: "No, I've owned before" }]} />
             </Field>
-            {propertyUse === PropertyUse.INVESTMENT && (
+            <Field id="q-dpa" label="Want down-payment-assistance programs included in the estimate?" help="Florida HFA programs can cover part or all of a 3.5% down payment — income and price caps apply per county.">
+              <ChoiceGroup id="q-dpa" value={interestedDpa} onChange={setInterestedDpa} options={[{ value: "unsure", label: "Not sure" }, { value: "yes", label: "Yes, include them" }, { value: "no", label: "No thanks" }]} />
+            </Field>
+            <Field id="q-seller-credit" label="Will the seller pay any of your closing costs? (optional)" help="Sometimes negotiated as part of the offer — it lowers the cash you bring to closing.">
+              <ChoiceGroup id="q-seller-credit" value={sellerCreditChoice} onChange={setSellerCreditChoice} options={[{ value: "no", label: "No / not sure" }, { value: "yes", label: "Yes" }]} />
+            </Field>
+            {sellerCreditChoice === "yes" && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l border-rule pl-5 ml-1">
+                <Field id="q-seller-credit-amount" error={errors.sellerCredit} label="About how much will the seller contribute?">
+                  <input id="q-seller-credit-amount" className={inputCls} inputMode="numeric" maxLength={9} placeholder="e.g. 6000" value={sellerCredit} aria-invalid={errors.sellerCredit ? true : undefined} aria-describedby={errors.sellerCredit ? "q-seller-credit-amount-error" : undefined} onChange={(e) => setSellerCredit(e.target.value)} />
+                </Field>
+              </div>
+            )}
+            {(propertyUse === PropertyUse.INVESTMENT || propertyType === PropertyType.MULTI_2_4) && (
               <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-l border-rule pl-5 ml-1">
                 <Field id="q-rent" error={errors.monthlyRent} label="Expected monthly rent from this property" help="Investor programs often qualify on the rent a property produces rather than your personal income.">
                   <input id="q-rent" className={inputCls} inputMode="numeric" maxLength={9} placeholder="e.g. 2200" value={monthlyRent} aria-invalid={errors.monthlyRent ? true : undefined} aria-describedby={errors.monthlyRent ? "q-rent-error" : undefined} onChange={(e) => setMonthlyRent(e.target.value)} />
